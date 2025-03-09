@@ -306,42 +306,12 @@ class AffirmationManager {
         const currentChars = this.currentAffirmation.replace(/\s/g, '').split('');
         const nextChars = this.nextAffirmation.replace(/\s/g, '').split('');
         
-        // Calculate letter counts for current affirmation
-        const currentLetterCounts = {};
-        for (const char of currentChars) {
-            currentLetterCounts[char] = (currentLetterCounts[char] || 0) + 1;
-        }
-        
-        // Calculate letter counts for next affirmation
-        const nextLetterCounts = {};
-        for (const char of nextChars) {
-            nextLetterCounts[char] = (nextLetterCounts[char] || 0) + 1;
-        }
-        
-        // Determine which boids to keep and which to fade out
-        for (const boid of this.boids) {
-            const char = boid.character;
-            
-            // Determine if we need this character for the next affirmation
-            const neededCount = nextLetterCounts[char] || 0;
-            const availableCount = currentLetterCounts[char] || 0;
-            
-            if (neededCount > 0) {
-                // We need this character for the next affirmation
-                nextLetterCounts[char]--; // Decrease needed count
-                boid.setTargetMode(true); // Put in target mode
-            } else {
-                // This character will fade out
-                boid.setTargetMode(false);
-                boid.isForRemoval = true;
-            }
-        }
-        
+        // Create a map of character positions for the next affirmation
         // Calculate new positions for the next affirmation text
         // Break text into lines
         const lines = this.breakTextIntoLines(this.nextAffirmation);
         
-        // Create an array of character positions that will be assigned to boids
+        // Create an array of character positions for the final text layout
         const characterPositions = [];
         
         let charIndex = 0;
@@ -366,56 +336,89 @@ class AffirmationManager {
                 charIndex++;
             }
         }
+
+        // Build character position map for faster lookup
+        const characterMap = {};
+        for (const pos of characterPositions) {
+            if (!characterMap[pos.char]) {
+                characterMap[pos.char] = [];
+            }
+            characterMap[pos.char].push({
+                x: pos.x,
+                y: pos.y,
+                index: pos.index,
+                assigned: false
+            });
+        }
         
-        // Instead of completely random shuffling, we'll use a more strategic approach
-        // Sort by distance from current center to reduce the chaotic appearance
-        const centerX = width / 2;
-        const centerY = height / 2;
+        // Mark all current boids as candidates for removal initially
+        for (const boid of this.boids) {
+            boid.isForRemoval = true;
+            boid.hasTargetAssigned = false;
+        }
         
-        // Apply a semi-random ordering that still maintains some structure
-        characterPositions.sort((a, b) => {
-            // Compute distances from center
-            const distA = dist(a.x, a.y, centerX, centerY);
-            const distB = dist(b.x, b.y, centerX, centerY);
+        // First pass: Assign positions to existing boids that match characters in the new text
+        // This prioritizes reusing existing boids for a smoother transition
+        const newBoids = [];
+        for (const boid of this.boids) {
+            const char = boid.character;
             
-            // 70% weight to distance (closer characters arrive first)
-            // 30% weight to randomness (for some variation)
-            return (distA * 0.7 + random(-10, 10) * 0.3) - (distB * 0.7 + random(-10, 10) * 0.3);
-        });
-        
-        // Assign arrival order to boids
-        for (let i = 0; i < characterPositions.length; i++) {
-            const pos = characterPositions[i];
-            
-            // Find a boid for this character that isn't marked for removal
-            const availableBoid = this.boids.find(b => b.character === pos.char && !b.isForRemoval && !b.hasTargetAssigned);
-            
-            if (availableBoid) {
-                // Assign target position
-                availableBoid.targetPosition.x = pos.x;
-                availableBoid.targetPosition.y = pos.y;
-                availableBoid.hasTargetAssigned = true;
+            // Check if this character is needed in the new text
+            if (characterMap[char] && characterMap[char].some(pos => !pos.assigned)) {
+                // Find the closest position for this character
+                let closestPos = null;
+                let closestDist = Infinity;
                 
-                // Assign an arrival order (0 to 1) for staggered arrival
-                // Use a narrower range to reduce the staggering effect
-                availableBoid.arrivalOrder = i / characterPositions.length * 0.7;
-            } else {
-                // We need to create a new boid for this character
-                const startX = random(width);
-                const startY = random(height);
-                const newBoid = new Boid(pos.char, startX, startY, pos.x, pos.y);
-                newBoid.setAlpha(0); // Start invisible
-                newBoid.isNew = true;
-                newBoid.hasTargetAssigned = true;
-                newBoid.setTargetMode(true);
+                for (const pos of characterMap[char]) {
+                    if (!pos.assigned) {
+                        const d = dist(boid.position.x, boid.position.y, pos.x, pos.y);
+                        if (d < closestDist) {
+                            closestDist = d;
+                            closestPos = pos;
+                        }
+                    }
+                }
                 
-                // Assign an arrival order (0 to 1) for staggered arrival
-                // Use a narrower range to reduce the staggering effect
-                newBoid.arrivalOrder = i / characterPositions.length * 0.7;
-                
-                this.boids.push(newBoid);
+                if (closestPos) {
+                    // Assign this position to this boid
+                    closestPos.assigned = true;
+                    boid.targetPosition.x = closestPos.x;
+                    boid.targetPosition.y = closestPos.y;
+                    boid.isForRemoval = false;
+                    boid.hasTargetAssigned = true;
+                    boid.setTargetMode(true);
+                    
+                    // Minimal staggering - arrival based on distance from current position
+                    const normalizedDist = constrain(closestDist / (width/2), 0, 1);
+                    boid.arrivalOrder = normalizedDist * 0.3; // Very small arrival order range (0-0.3)
+                }
             }
         }
+        
+        // Second pass: Create new boids for any unassigned positions
+        for (const char in characterMap) {
+            for (const pos of characterMap[char]) {
+                if (!pos.assigned) {
+                    // Create a new boid for this position
+                    const startX = random(width);
+                    const startY = random(height);
+                    const newBoid = new Boid(char, startX, startY, pos.x, pos.y);
+                    newBoid.setAlpha(0); // Start invisible
+                    newBoid.isNew = true;
+                    newBoid.hasTargetAssigned = true;
+                    newBoid.setTargetMode(true);
+                    
+                    // Very small staggering effect for consistent formation
+                    newBoid.arrivalOrder = 0.2; // Fixed small delay for all new boids
+                    
+                    newBoids.push(newBoid);
+                    pos.assigned = true;
+                }
+            }
+        }
+        
+        // Add any new boids to the main boids array
+        this.boids = [...this.boids, ...newBoids];
         
         // Update current affirmation to next
         this.currentAffirmation = this.nextAffirmation;
@@ -428,8 +431,9 @@ class AffirmationManager {
         const fadeOutValue = 255 * (1 - progress);
         const fadeInValue = 255 * progress;
         
-        // We'll render characters as individual boids through the entire transition
-        // This prevents the abrupt snap to the final text layout
+        // Accelerate the transition by boosting progress
+        // This will make everything happen more quickly
+        const acceleratedProgress = Math.pow(progress, 0.7); // Apply an easing curve to progress
         
         // Update and display all boids
         for (const boid of this.boids) {
@@ -448,17 +452,16 @@ class AffirmationManager {
             }
             
             // Calculate individual boid transition progress based on arrivalOrder
-            // This creates a staggered arrival effect
-            // Reduce the stagger effect by lowering the multiplier from 0.5 to 0.3
-            const boidProgress = constrain((progress - boid.arrivalOrder * 0.3) * 1.5, 0, 1);
+            // Reduce staggering even further and accelerate progress
+            const boidProgress = constrain((acceleratedProgress - boid.arrivalOrder * 0.15) * 2.0, 0, 1);
             
             // Only move boids according to their individual progress
             if (boidProgress > 0 && !boid.isForRemoval) {
                 // Adjust maxSpeed based on progress to slow down as they arrive
-                boid.maxSpeed = 4 * (1 - boidProgress * 0.8);
+                boid.maxSpeed = 5 * (1 - boidProgress * 0.9);
                 
                 // Set isSettling flag when getting close to destination
-                boid.isSettling = boidProgress > 0.7;
+                boid.isSettling = boidProgress > 0.6;
                 
                 // Calculate distance to target
                 const distToTarget = dist(
@@ -466,9 +469,9 @@ class AffirmationManager {
                     boid.targetPosition.x, boid.targetPosition.y
                 );
                 
-                // If close to target and boid's individual progress is high enough, fully settle in place
-                // Lower the distance threshold and the progress threshold to settle earlier
-                if (distToTarget < 2 && boidProgress > 0.6) {
+                // Make boids settle much earlier and more aggressively
+                if (distToTarget < 5 && boidProgress > 0.4) {
+                    // Just jump directly to the target position when close enough
                     boid.position.x = boid.targetPosition.x;
                     boid.position.y = boid.targetPosition.y;
                     boid.velocity.mult(0);
@@ -476,9 +479,16 @@ class AffirmationManager {
                 } else {
                     // Apply force toward target based on individual progress
                     const arriveForce = boid.arrive(boid.targetPosition);
-                    // Increase the minimum force for faster initial movement
-                    arriveForce.mult(0.5 + boidProgress * 0.7); // Stronger force as progress increases
+                    // Use much stronger force to quickly move to position
+                    arriveForce.mult(0.8 + boidProgress * 1.2); 
                     boid.applyForce(arriveForce);
+                    
+                    // Add a direct dampening of velocity when getting closer to target
+                    if (distToTarget < 50) {
+                        // The closer to target, the more we slow down
+                        const slowdownFactor = map(distToTarget, 0, 50, 0.7, 0.95);
+                        boid.velocity.mult(slowdownFactor);
+                    }
                 }
             }
             
@@ -497,8 +507,8 @@ class AffirmationManager {
         this.particleSystem.update();
         this.particleSystem.display();
         
-        // Clean up boids at the end of transition
-        if (progress >= 0.95) {
+        // Clean up boids earlier in the transition
+        if (progress >= 0.7) {
             // Remove boids marked for removal
             this.boids = this.boids.filter(boid => !boid.isForRemoval);
             

@@ -16,6 +16,10 @@ class Boid {
         this.isSettling = false; // Whether the boid is settling into place
         this.arrivalThreshold = 5; // How close to consider "arrived"
         
+        // Add a rotation angle for smoother transitions
+        this.rotationAngle = 0;
+        this.targetRotationAngle = 0;
+        
         // Per-boid unique values for subtle variation
         this.separationWeight = random(1.5, 2.5);
         this.alignmentWeight = random(1.0, 1.5);
@@ -43,6 +47,22 @@ class Boid {
                 this.trail[i].alpha -= 20;
             }
         }
+        
+        // Calculate target rotation angle if moving
+        if (this.velocity.mag() > 0.1) {
+            this.targetRotationAngle = atan2(this.velocity.y, this.velocity.x) + HALF_PI;
+        }
+        
+        // Smoothly interpolate current rotation angle towards target
+        const angleDiff = this.targetRotationAngle - this.rotationAngle;
+        
+        // Normalize the angle difference to be between -PI and PI
+        let normalizedDiff = angleDiff;
+        while (normalizedDiff > PI) normalizedDiff -= TWO_PI;
+        while (normalizedDiff < -PI) normalizedDiff += TWO_PI;
+        
+        // Apply a smooth interpolation
+        this.rotationAngle += normalizedDiff * 0.1;
         
         // Update position based on physics
         this.velocity.add(this.acceleration);
@@ -85,10 +105,9 @@ class Boid {
         push();
         translate(this.position.x, this.position.y);
         
-        // If moving, slightly rotate in the direction of movement
-        if (!this.isSettling && this.velocity.mag() > 0.1) {
-            const angle = atan2(this.velocity.y, this.velocity.x);
-            rotate(angle + HALF_PI);
+        // Use the smoothly interpolated rotation angle for display
+        if (!this.isSettling) {
+            rotate(this.rotationAngle);
         }
         
         fill(255, this.alpha);

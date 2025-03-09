@@ -358,6 +358,10 @@ class AffirmationManager {
         // Assign target positions to boids that will be kept
         let charIndex = 0;
         let targetIndex = 0;
+        
+        // Create an array of character positions that will be assigned to boids
+        const characterPositions = [];
+        
         for (let i = 0; i < lines.length; i++) {
             const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
             
@@ -369,26 +373,50 @@ class AffirmationManager {
                     const lineX = this.textX - textWidth(lines[i]) / 2;
                     const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
                     
-                    // Find a boid for this character that isn't marked for removal
-                    const availableBoid = this.boids.find(b => b.character === char && !b.isForRemoval && !b.hasTargetAssigned);
-                    
-                    if (availableBoid) {
-                        // Assign target position to this boid
-                        availableBoid.targetPosition.x = charX;
-                        availableBoid.targetPosition.y = lineY;
-                        availableBoid.hasTargetAssigned = true;
-                    } else {
-                        // We need to create a new boid for this character
-                        const startX = random(width);
-                        const startY = random(height);
-                        const newBoid = new Boid(char, startX, startY, charX, lineY);
-                        newBoid.setAlpha(0); // Start invisible
-                        newBoid.isNew = true;
-                        newBoid.setTargetMode(true);
-                        this.boids.push(newBoid);
-                    }
+                    characterPositions.push({
+                        char: char,
+                        x: charX,
+                        y: lineY,
+                        index: charIndex
+                    });
                 }
                 charIndex++;
+            }
+        }
+        
+        // Shuffle the character positions array for random arrival order
+        // Comment this line for sequential arrival or uncomment for random arrival
+        characterPositions.sort(() => Math.random() - 0.5);
+        
+        // Assign arrival order to boids
+        for (let i = 0; i < characterPositions.length; i++) {
+            const pos = characterPositions[i];
+            
+            // Find a boid for this character that isn't marked for removal
+            const availableBoid = this.boids.find(b => b.character === pos.char && !b.isForRemoval && !b.hasTargetAssigned);
+            
+            if (availableBoid) {
+                // Assign target position
+                availableBoid.targetPosition.x = pos.x;
+                availableBoid.targetPosition.y = pos.y;
+                availableBoid.hasTargetAssigned = true;
+                
+                // Assign an arrival order (0 to 1) for staggered arrival
+                availableBoid.arrivalOrder = i / characterPositions.length;
+            } else {
+                // We need to create a new boid for this character
+                const startX = random(width);
+                const startY = random(height);
+                const newBoid = new Boid(pos.char, startX, startY, pos.x, pos.y);
+                newBoid.setAlpha(0); // Start invisible
+                newBoid.isNew = true;
+                newBoid.hasTargetAssigned = true;
+                newBoid.setTargetMode(true);
+                
+                // Assign an arrival order (0 to 1) for staggered arrival
+                newBoid.arrivalOrder = i / characterPositions.length;
+                
+                this.boids.push(newBoid);
             }
         }
         
@@ -419,6 +447,24 @@ class AffirmationManager {
                 boid.setAlpha(fadeInValue);
             }
             
+            // Calculate individual boid transition progress based on arrivalOrder
+            // This creates a staggered arrival effect
+            const boidProgress = constrain((progress - boid.arrivalOrder * 0.5) * 1.5, 0, 1);
+            
+            // Only move boids according to their individual progress
+            if (boidProgress > 0 && !boid.isForRemoval) {
+                // Adjust maxSpeed based on progress to slow down as they arrive
+                boid.maxSpeed = 4 * (1 - boidProgress * 0.8);
+                
+                // Set isSettling flag when getting close to destination
+                boid.isSettling = boidProgress > 0.7;
+                
+                // Apply force toward target based on individual progress
+                const arriveForce = boid.arrive(boid.targetPosition);
+                arriveForce.mult(0.3 + boidProgress * 0.7); // Stronger force as progress increases
+                boid.applyForce(arriveForce);
+            }
+            
             // Update all boids
             boid.flock(this.boids);
             boid.update();
@@ -438,12 +484,6 @@ class AffirmationManager {
         if (progress >= 0.95) {
             // Remove boids marked for removal
             this.boids = this.boids.filter(boid => !boid.isForRemoval);
-            
-            // Reset flags for next cycle
-            for (const boid of this.boids) {
-                boid.isNew = false;
-                boid.hasTargetAssigned = false;
-            }
         }
     }
     

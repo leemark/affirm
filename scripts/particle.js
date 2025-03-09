@@ -19,6 +19,32 @@ class Particle {
         
         // Apply some drag
         this.velocity.mult(0.97);
+        
+        // Constrain particles to the screen (bounce off edges or fade out faster)
+        const buffer = this.size;
+        if (this.position.x < buffer || this.position.x > width - buffer ||
+            this.position.y < buffer || this.position.y > height - buffer) {
+            
+            // Option 1: Bounce off edges
+            if (this.position.x < buffer) {
+                this.position.x = buffer;
+                this.velocity.x *= -0.7;
+            } else if (this.position.x > width - buffer) {
+                this.position.x = width - buffer;
+                this.velocity.x *= -0.7;
+            }
+            
+            if (this.position.y < buffer) {
+                this.position.y = buffer;
+                this.velocity.y *= -0.7;
+            } else if (this.position.y > height - buffer) {
+                this.position.y = height - buffer;
+                this.velocity.y *= -0.7;
+            }
+            
+            // Option 2: Fade out faster when near edges
+            this.alpha -= this.fadeRate * 2;
+        }
     }
     
     display() {

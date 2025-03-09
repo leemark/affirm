@@ -64,11 +64,18 @@ class Boid {
             for (let i = 0; i < this.trail.length; i++) {
                 const point = this.trail[i];
                 if (prevPos) {
-                    const trailAlpha = point.alpha;
-                    stroke(255, trailAlpha * 0.7);
-                    strokeWeight(this.size / 10);
-                    line(prevPos.x, prevPos.y, point.pos.x, point.pos.y);
-                    noStroke();
+                    // Calculate distance between current point and previous point
+                    const distance = dist(prevPos.x, prevPos.y, point.pos.x, point.pos.y);
+                    
+                    // Only draw the line if points are reasonably close
+                    // (prevents lines from stretching across the screen)
+                    if (distance < 50) {
+                        const trailAlpha = point.alpha;
+                        stroke(255, trailAlpha * 0.7);
+                        strokeWeight(this.size / 10);
+                        line(prevPos.x, prevPos.y, point.pos.x, point.pos.y);
+                        noStroke();
+                    }
                 }
                 prevPos = point.pos;
             }
@@ -262,11 +269,31 @@ class Boid {
         // If in target mode, don't wrap around
         if (this.isInTargetMode) return;
         
+        // Check if we need to wrap around
+        let wrapped = false;
+        
         // Wrap around screen edges
-        if (this.position.x < -buffer) this.position.x = width + buffer;
-        if (this.position.y < -buffer) this.position.y = height + buffer;
-        if (this.position.x > width + buffer) this.position.x = -buffer;
-        if (this.position.y > height + buffer) this.position.y = -buffer;
+        if (this.position.x < -buffer) {
+            this.position.x = width + buffer;
+            wrapped = true;
+        }
+        if (this.position.y < -buffer) {
+            this.position.y = height + buffer;
+            wrapped = true;
+        }
+        if (this.position.x > width + buffer) {
+            this.position.x = -buffer;
+            wrapped = true;
+        }
+        if (this.position.y > height + buffer) {
+            this.position.y = -buffer;
+            wrapped = true;
+        }
+        
+        // If the boid wrapped around the screen, clear the trail to avoid long lines
+        if (wrapped && TRAILS_ENABLED) {
+            this.trail = [];
+        }
     }
     
     // Set whether this boid should seek its target position

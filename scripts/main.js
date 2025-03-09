@@ -1,16 +1,16 @@
 // Global variables
 let canvas;
 let affirmationManager;
-let currentMode = 'text'; // 'text', 'transition', 'boids'
+let currentMode = 'static'; // 'static', 'transition', 'flying'
 let transitionProgress = 0;
-let transitionDirection = 'to-boids'; // 'to-boids', 'to-text'
+let transitionDirection = 'to-flying'; // 'to-flying', 'to-static'
 let transitionDuration = 3000; // milliseconds for boids transition
 let textTransitionDuration = 4000; // milliseconds for text transition (longer for smoother effect)
 let transitionStartTime = 0;
 let displayDuration = 6000; // how long to display text before transition
 let displayStartTime = 0;
-let boidsFlightDuration = 8000; // how long boids fly before next affirmation
-let boidsStartTime = 0;
+let flyingDuration = 8000; // how long boids fly before next affirmation
+let flyingStartTime = 0;
 
 // Constants
 const MAX_PARTICLES = 100;
@@ -30,7 +30,10 @@ function setup() {
     affirmationManager.loadInitialAffirmation().then(() => {
         // Start the display cycle
         displayStartTime = millis();
-        currentMode = 'text';
+        currentMode = 'static';
+        
+        // Prepare initial boids in static formation
+        affirmationManager.prepareInitialBoids();
         
         // Hide loading indicator
         document.getElementById('loading').classList.add('hidden');
@@ -47,62 +50,59 @@ function draw() {
 
     // Handle different states
     switch (currentMode) {
-        case 'text':
-            affirmationManager.displayText();
+        case 'static':
+            // Display boids in static formation (as text)
+            affirmationManager.updateAndDisplayStaticBoids();
             
-            // Check if it's time to transition to boids
+            // Check if it's time to transition to flying mode
             if (millis() - displayStartTime > displayDuration) {
                 currentMode = 'transition';
-                transitionDirection = 'to-boids';
+                transitionDirection = 'to-flying';
                 transitionStartTime = millis();
                 transitionProgress = 0;
-                affirmationManager.prepareForBoids();
+                affirmationManager.prepareForFlying();
             }
             break;
             
         case 'transition':
             // Calculate transition progress (0 to 1)
-            if (transitionDirection === 'to-boids') {
+            if (transitionDirection === 'to-flying') {
                 transitionProgress = constrain((millis() - transitionStartTime) / transitionDuration, 0, 1);
-            } else { // to-text - use longer duration for smoother effect
+            } else { // to-static - use longer duration for smoother effect
                 transitionProgress = constrain((millis() - transitionStartTime) / textTransitionDuration, 0, 1);
             }
             
-            if (transitionDirection === 'to-boids') {
-                affirmationManager.transitionToBoids(transitionProgress);
+            if (transitionDirection === 'to-flying') {
+                affirmationManager.transitionToFlying(transitionProgress);
                 
                 // Check if transition is complete
                 if (transitionProgress >= 1) {
-                    currentMode = 'boids';
-                    boidsStartTime = millis();
+                    currentMode = 'flying';
+                    flyingStartTime = millis();
                 }
-            } else { // to-text
-                affirmationManager.transitionToText(transitionProgress);
+            } else { // to-static
+                affirmationManager.transitionToStatic(transitionProgress);
                 
                 // Check if transition is complete
                 if (transitionProgress >= 1) {
-                    // Reset text reveal for the new affirmation
-                    affirmationManager.textRevealProgress = 0;
-                    affirmationManager.lastCharacterTime = millis();
-                    
-                    currentMode = 'text';
+                    currentMode = 'static';
                     displayStartTime = millis();
                 }
             }
             break;
             
-        case 'boids':
-            affirmationManager.updateAndDisplayBoids();
+        case 'flying':
+            affirmationManager.updateAndDisplayFlyingBoids();
             
-            // Check if it's time to transition back to text
-            if (millis() - boidsStartTime > boidsFlightDuration) {
+            // Check if it's time to transition back to static
+            if (millis() - flyingStartTime > flyingDuration) {
                 // Request new affirmation if needed
                 affirmationManager.requestNextAffirmation().then(() => {
                     currentMode = 'transition';
-                    transitionDirection = 'to-text';
+                    transitionDirection = 'to-static';
                     transitionStartTime = millis();
                     transitionProgress = 0;
-                    affirmationManager.prepareForText();
+                    affirmationManager.prepareForStatic();
                 });
             }
             break;
@@ -122,7 +122,7 @@ function windowResized() {
 
 // Mouse interaction for boids
 function mouseMoved() {
-    if (currentMode === 'boids' && affirmationManager) {
+    if (currentMode === 'flying' && affirmationManager) {
         affirmationManager.handleMouseInfluence(mouseX, mouseY);
     }
 } 

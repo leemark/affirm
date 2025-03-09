@@ -20,6 +20,9 @@ class Boid {
         this.rotationAngle = 0;
         this.targetRotationAngle = 0;
         
+        // Add static flag for when boid is part of text
+        this.isStatic = false;
+        
         // Per-boid unique values for subtle variation
         this.separationWeight = random(1.5, 2.5);
         this.alignmentWeight = random(1.0, 1.5);
@@ -47,6 +50,9 @@ class Boid {
                 this.trail[i].alpha -= 20;
             }
         }
+        
+        // If static (part of text formation), don't apply physics
+        if (this.isStatic) return;
         
         // Calculate target rotation angle if moving
         if (this.velocity.mag() > 0.1) {
@@ -124,44 +130,28 @@ class Boid {
     flock(boids) {
         if (this.isInTargetMode) {
             // Move towards final text position
-            const arrival = this.arrive(this.targetPosition);
-            arrival.mult(2.5); // Stronger pull when forming text
-            this.applyForce(arrival);
-            
-            // Slow down as we approach the target
-            const distance = p5.Vector.dist(this.position, this.targetPosition);
-            if (distance < 50) {
-                const slowingFactor = map(distance, 0, 50, 0.8, 1.0);
-                this.velocity.mult(slowingFactor);
-                
-                // Check if we've arrived
-                if (distance < this.arrivalThreshold) {
-                    this.isSettling = true;
-                    this.velocity.mult(0.8); // Damp velocity when settling
-                    
-                    // Snap to final position when very close
-                    if (distance < 1) {
-                        this.position = this.targetPosition.copy();
-                        this.velocity.mult(0);
-                    }
-                }
-            }
-        } else {
-            // Standard flocking behavior
-            const separation = this.separate(boids);
-            const alignment = this.align(boids);
-            const cohesion = this.cohesion(boids);
-            
-            // Apply weights
-            separation.mult(this.separationWeight);
-            alignment.mult(this.alignmentWeight);
-            cohesion.mult(this.cohesionWeight);
-            
-            // Apply all forces
-            this.applyForce(separation);
-            this.applyForce(alignment);
-            this.applyForce(cohesion);
+            const arriveForce = this.arrive(this.targetPosition);
+            this.applyForce(arriveForce);
+            return;
         }
+        
+        // Skip flocking if static
+        if (this.isStatic) return;
+        
+        // Apply standard flocking behavior
+        const separation = this.separate(boids);
+        const alignment = this.align(boids);
+        const cohesion = this.cohesion(boids);
+        
+        // Weight these forces according to this boid's individual preferences
+        separation.mult(this.separationWeight);
+        alignment.mult(this.alignmentWeight);
+        cohesion.mult(this.cohesionWeight);
+        
+        // Add the forces to this boid's acceleration
+        this.applyForce(separation);
+        this.applyForce(alignment);
+        this.applyForce(cohesion);
     }
     
     // Flocking behavior: avoid crowding neighbors

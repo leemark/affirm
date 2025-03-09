@@ -5,15 +5,11 @@ class AffirmationManager {
         this.fontSize = 32;
         this.boids = [];
         this.isReady = false;
-        this.textRevealProgress = 0;
         this.particleSystem = new ParticleSystem();
         
         // Configuration
         this.lineHeight = 1.5;
         this.maxWidth = width * 0.8;
-        this.textAppearDelay = 50; // ms between characters appearing
-        this.textDisappearDelay = 30; // ms between characters disappearing
-        this.lastCharacterTime = 0;
         this.textX = width / 2;
         this.textY = height / 2;
         
@@ -40,7 +36,6 @@ class AffirmationManager {
             
             // Setup is complete
             this.isReady = true;
-            this.textRevealProgress = 0;
             this.initializeTextSize();
             
             return this.currentAffirmation;
@@ -49,7 +44,6 @@ class AffirmationManager {
             // Use a fallback
             this.currentAffirmation = "You are capable of amazing things.";
             this.isReady = true;
-            this.textRevealProgress = 0;
             this.initializeTextSize();
             
             return this.currentAffirmation;
@@ -131,60 +125,6 @@ class AffirmationManager {
         return Math.max(longestLine, textWidth(currentLine));
     }
     
-    // Display the current affirmation as static text
-    displayText() {
-        if (!this.isReady) return;
-        
-        // Set text properties
-        textAlign(CENTER, CENTER);
-        textSize(this.fontSize);
-        fill(255);
-        
-        // Break text into lines
-        const lines = this.breakTextIntoLines(this.currentAffirmation);
-        
-        // Calculate text reveal progress
-        const totalChars = this.currentAffirmation.length;
-        const currentTime = millis();
-        
-        // Increment text reveal progress
-        if (this.textRevealProgress < totalChars && 
-            currentTime - this.lastCharacterTime > this.textAppearDelay) {
-            this.textRevealProgress++;
-            this.lastCharacterTime = currentTime;
-            
-            // Add particles at the position of the new character
-            if (this.textRevealProgress > 0 && this.textRevealProgress <= totalChars) {
-                const charPosition = this.getCharacterPosition(this.textRevealProgress - 1, lines);
-                this.particleSystem.emit(charPosition.x, charPosition.y, 3);
-            }
-        }
-        
-        // If transitioned from boids mode, instantly show all text
-        // to avoid another character-by-character reveal
-        if (this.textRevealProgress === 0 && this.boids.length > 0) {
-            this.textRevealProgress = totalChars;
-        }
-        
-        // Display text up to the current reveal progress
-        let charCount = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
-            
-            // Display characters of this line up to the reveal progress
-            for (let j = 0; j < lines[i].length; j++) {
-                if (charCount < this.textRevealProgress) {
-                    text(lines[i][j], this.textX - textWidth(lines[i]) / 2 + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2, lineY);
-                }
-                charCount++;
-            }
-        }
-        
-        // Update and display particles
-        this.particleSystem.update();
-        this.particleSystem.display();
-    }
-    
     // Break text into lines that fit within maxWidth
     breakTextIntoLines(text) {
         const words = text.split(' ');
@@ -227,15 +167,15 @@ class AffirmationManager {
         return {x: this.textX, y: this.textY};
     }
     
-    // Prepare for transition to boids
-    prepareForBoids() {
+    // Create initial boids in static formation for the text
+    prepareInitialBoids() {
         // Clear existing boids
         this.boids = [];
         
         // Break text into lines
         const lines = this.breakTextIntoLines(this.currentAffirmation);
         
-        // Create a boid for each character
+        // Create a boid for each character in the text
         let charCount = 0;
         for (let i = 0; i < lines.length; i++) {
             const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
@@ -248,16 +188,55 @@ class AffirmationManager {
                     const lineX = this.textX - textWidth(lines[i]) / 2;
                     const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
                     
-                    // Create a boid for this character
-                    this.boids.push(new Boid(char, charX, lineY, charX, lineY));
+                    // Create a boid for this character at the correct static position
+                    const boid = new Boid(char, charX, lineY, charX, lineY);
+                    
+                    // Set the boid to be static (not moving)
+                    boid.velocity = createVector(0, 0);
+                    boid.isStatic = true;
+                    
+                    this.boids.push(boid);
                 }
                 charCount++;
             }
         }
     }
     
-    // Transition from static text to boids
-    transitionToBoids(progress) {
+    // Display boids in static formation (as text)
+    updateAndDisplayStaticBoids() {
+        if (this.boids.length === 0) return;
+        
+        // Update and display each boid
+        for (const boid of this.boids) {
+            // No flocking behavior when static
+            boid.isStatic = true; 
+            boid.update();
+            boid.display();
+            
+            // Occasionally emit particles from static boids for subtle effects
+            if (random() < 0.001) {
+                this.particleSystem.emit(boid.position.x, boid.position.y, 1);
+            }
+        }
+        
+        // Update and display particles
+        this.particleSystem.update();
+        this.particleSystem.display();
+    }
+    
+    // Prepare for transition to flying formation
+    prepareForFlying() {
+        // Nothing needs to be done here now - boids are already created
+        // Just keep track of original positions for potential transitions
+        for (const boid of this.boids) {
+            boid.originalX = boid.position.x;
+            boid.originalY = boid.position.y;
+            boid.isStatic = false;
+        }
+    }
+    
+    // Transition from static to flying boids
+    transitionToFlying(progress) {
         if (this.boids.length === 0) return;
         
         // Update and display each boid
@@ -270,6 +249,7 @@ class AffirmationManager {
             
             if (boidProgress > 0) {
                 // Allow boid to move more freely as transition progresses
+                boid.isStatic = false;
                 boid.velocity.mult(0.95 + boidProgress * 0.1);
                 boid.maxSpeed = 1 + boidProgress * 3;
                 
@@ -299,8 +279,8 @@ class AffirmationManager {
         this.particleSystem.display();
     }
     
-    // Update and display boids in flocking mode
-    updateAndDisplayBoids() {
+    // Update and display boids in flying mode
+    updateAndDisplayFlyingBoids() {
         if (this.boids.length === 0) return;
         
         // Update and display each boid
@@ -320,8 +300,8 @@ class AffirmationManager {
         this.particleSystem.display();
     }
     
-    // Prepare for transition to text
-    prepareForText() {
+    // Prepare for transition to static formation
+    prepareForStatic() {
         // Analyze current and next affirmations to determine which boids to keep
         const currentChars = this.currentAffirmation.replace(/\s/g, '').split('');
         const nextChars = this.nextAffirmation.replace(/\s/g, '').split('');
@@ -361,13 +341,10 @@ class AffirmationManager {
         // Break text into lines
         const lines = this.breakTextIntoLines(this.nextAffirmation);
         
-        // Assign target positions to boids that will be kept
-        let charIndex = 0;
-        let targetIndex = 0;
-        
         // Create an array of character positions that will be assigned to boids
         const characterPositions = [];
         
+        let charIndex = 0;
         for (let i = 0; i < lines.length; i++) {
             const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
             
@@ -431,8 +408,8 @@ class AffirmationManager {
         this.nextAffirmation = '';
     }
     
-    // Transition from boids to static text
-    transitionToText(progress) {
+    // Transition from flying to static formation
+    transitionToStatic(progress) {
         // Calculate fadeIn/fadeOut based on progress
         const fadeOutValue = 255 * (1 - progress);
         const fadeInValue = 255 * progress;
@@ -479,6 +456,7 @@ class AffirmationManager {
                     boid.position.x = boid.targetPosition.x;
                     boid.position.y = boid.targetPosition.y;
                     boid.velocity.mult(0);
+                    boid.isStatic = true; // Set to static mode
                 } else {
                     // Apply force toward target based on individual progress
                     const arriveForce = boid.arrive(boid.targetPosition);
@@ -519,58 +497,74 @@ class AffirmationManager {
     handleResize() {
         this.textX = width / 2;
         this.textY = height / 2;
-        this.maxWidth = width * 0.8;
         
-        // Recalculate text size
+        // Recalculate font size if needed
         this.initializeTextSize();
         
-        // Update target positions for boids if they exist
+        // Reposition boids if they're in static formation
         if (this.boids.length > 0) {
-            this.prepareForText();
+            // Break text into lines
+            const lines = this.breakTextIntoLines(this.currentAffirmation);
+            
+            // Reposition each boid for the new screen size
+            // This logic is similar to prepareInitialBoids
+            let boidIndex = 0;
+            let charCount = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
+                
+                for (let j = 0; j < lines[i].length; j++) {
+                    const char = lines[i][j];
+                    
+                    // Skip spaces
+                    if (char !== ' ') {
+                        if (boidIndex < this.boids.length) {
+                            const lineX = this.textX - textWidth(lines[i]) / 2;
+                            const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
+                            
+                            // Update boid position and target
+                            const boid = this.boids[boidIndex];
+                            
+                            // Only update if the boid is in static mode
+                            if (boid.isStatic) {
+                                boid.position.x = charX;
+                                boid.position.y = lineY;
+                                boid.targetPosition.x = charX;
+                                boid.targetPosition.y = lineY;
+                            }
+                            
+                            boidIndex++;
+                        }
+                    }
+                    charCount++;
+                }
+            }
         }
     }
     
-    // Apply mouse influence to boids
+    // Handle mouse influence for boids
     handleMouseInfluence(mouseX, mouseY) {
-        const isAttract = this.mouseInfluenceType === 'attract';
-        
         for (const boid of this.boids) {
-            boid.applyMouseInfluence(mouseX, mouseY, isAttract);
+            boid.applyMouseInfluence(mouseX, mouseY, this.mouseInfluenceType === 'attract');
         }
     }
     
-    // Toggle mouse influence type
+    // Toggle between attract and repel mouse influence
     toggleMouseInfluence() {
         this.mouseInfluenceType = this.mouseInfluenceType === 'attract' ? 'repel' : 'attract';
+        return this.mouseInfluenceType;
     }
     
-    // API call to fetch an affirmation (placeholder)
+    // Fetch an affirmation from the API
     async fetchAffirmation() {
-        // This would be implemented with the actual API endpoint
-        // For now, return a placeholder
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve("You are enough exactly as you are, embracing both your strengths and your beautiful imperfections.");
-            }, 500);
-        });
+        // To be implemented with Cloudflare Worker
+        return "You are worthy of love and belong exactly where you are.";
     }
     
-    // API call to fetch a related affirmation (placeholder)
+    // Fetch a related affirmation from the API based on the current one
     async fetchRelatedAffirmation(currentAffirmation) {
-        // This would be implemented with the actual API endpoint
-        // For now, return a placeholder
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const affirmations = [
-                    "Each breath is a reminder that you are alive and filled with possibility.",
-                    "Trust your journey, even when the path ahead seems unclear.",
-                    "Your courage grows stronger each time you face your fears.",
-                    "The light within you illuminates the world in ways you may never fully see.",
-                    "You are not defined by your mistakes, but by how you learn from them."
-                ];
-                
-                resolve(affirmations[Math.floor(Math.random() * affirmations.length)]);
-            }, 500);
-        });
+        // To be implemented with Cloudflare Worker and Gemini API
+        return "Your journey is uniquely yours, and every step has meaning.";
     }
 } 

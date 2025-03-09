@@ -3,9 +3,8 @@ class AffirmationManager {
         this.currentAffirmation = '';
         this.nextAffirmation = '';
         this.fontSize = 32;
-        this.boids = [];
         this.isReady = false;
-        this.particleSystem = new ParticleSystem();
+        this.characters = []; // Will store all character objects
         
         // Configuration
         this.lineHeight = 1.5;
@@ -13,8 +12,10 @@ class AffirmationManager {
         this.textX = width / 2;
         this.textY = height / 2;
         
-        // Mouse influence
-        this.mouseInfluenceType = 'repel'; // 'attract' or 'repel'
+        // Animation timing (in milliseconds)
+        this.fadeInDuration = 2000; 
+        this.fadeOutDuration = 1500;
+        this.staggerDelay = 70; // Delay between each character's animation
     }
     
     // Load the initial affirmation from the API
@@ -54,7 +55,6 @@ class AffirmationManager {
     async requestNextAffirmation() {
         try {
             // For now, use static placeholders until the API is implemented
-            // this.nextAffirmation = await this.fetchRelatedAffirmation(this.currentAffirmation);
             const affirmations = [
                 "Each breath is a reminder that you are alive and filled with possibility.",
                 "Trust your journey, even when the path ahead seems unclear.",
@@ -99,499 +99,333 @@ class AffirmationManager {
         // Adjust text size to fit screen if needed
         const textWidth = this.calculateTextWidth(this.currentAffirmation);
         if (textWidth > this.maxWidth) {
-            this.fontSize = this.fontSize * (this.maxWidth / textWidth);
+            this.fontSize = floor(this.fontSize * (this.maxWidth / textWidth));
             textSize(this.fontSize);
         }
     }
     
-    // Calculate the width of multi-line text
+    // Calculate the width of a text string
     calculateTextWidth(text) {
-        const words = text.split(' ');
-        let longestLine = 0;
-        let currentLine = '';
+        const lines = this.breakTextIntoLines(text);
+        let maxLineWidth = 0;
         
-        for (const word of words) {
-            const testLine = currentLine + word + ' ';
-            const testWidth = textWidth(testLine);
-            
-            if (testWidth > this.maxWidth) {
-                longestLine = Math.max(longestLine, textWidth(currentLine));
-                currentLine = word + ' ';
-            } else {
-                currentLine = testLine;
+        for (const line of lines) {
+            const lineWidth = textWidth(line);
+            if (lineWidth > maxLineWidth) {
+                maxLineWidth = lineWidth;
             }
         }
         
-        return Math.max(longestLine, textWidth(currentLine));
+        return maxLineWidth;
     }
     
-    // Break text into lines that fit within maxWidth
+    // Break text into lines based on max width
     breakTextIntoLines(text) {
         const words = text.split(' ');
         const lines = [];
-        let currentLine = '';
+        let currentLine = words[0];
         
-        for (const word of words) {
-            const testLine = currentLine + word + ' ';
-            const testWidth = textWidth(testLine);
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const testLine = currentLine + ' ' + word;
             
-            if (testWidth > this.maxWidth) {
-                lines.push(currentLine.trim());
-                currentLine = word + ' ';
-            } else {
+            if (textWidth(testLine) <= this.maxWidth) {
                 currentLine = testLine;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
             }
         }
         
-        lines.push(currentLine.trim());
+        lines.push(currentLine);
         return lines;
     }
     
-    // Get the position of a specific character in the text
-    getCharacterPosition(charIndex, lines) {
-        let charCount = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
-            
-            for (let j = 0; j < lines[i].length; j++) {
-                if (charCount === charIndex) {
-                    const lineX = this.textX - textWidth(lines[i]) / 2;
-                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
-                    return {x: charX, y: lineY};
-                }
-                charCount++;
-            }
-        }
+    // Create initial characters with fade-in animation
+    initializeCharacters() {
+        this.characters = [];
         
-        // Default position if character not found
-        return {x: this.textX, y: this.textY};
-    }
-    
-    // Create initial boids in static formation for the text
-    prepareInitialBoids() {
-        // Clear existing boids
-        this.boids = [];
-        
-        // Break text into lines
         const lines = this.breakTextIntoLines(this.currentAffirmation);
-        
-        // Create a boid for each character in the text
-        let charCount = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
-            
-            for (let j = 0; j < lines[i].length; j++) {
-                const char = lines[i][j];
-                
-                // Skip spaces
-                if (char !== ' ') {
-                    const lineX = this.textX - textWidth(lines[i]) / 2;
-                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
-                    
-                    // Create a boid for this character at the correct static position
-                    const boid = new Boid(char, charX, lineY, charX, lineY);
-                    
-                    // Set the boid to be static (not moving)
-                    boid.velocity = createVector(0, 0);
-                    boid.isStatic = true;
-                    
-                    this.boids.push(boid);
-                }
-                charCount++;
-            }
-        }
-    }
-    
-    // Display boids in static formation (as text)
-    updateAndDisplayStaticBoids() {
-        if (this.boids.length === 0) return;
-        
-        // Update and display each boid
-        for (const boid of this.boids) {
-            // No flocking behavior when static
-            boid.isStatic = true; 
-            boid.update();
-            boid.display();
-            
-            // Occasionally emit particles from static boids for subtle effects
-            if (random() < 0.001) {
-                this.particleSystem.emit(boid.position.x, boid.position.y, 1);
-            }
-        }
-        
-        // Update and display particles
-        this.particleSystem.update();
-        this.particleSystem.display();
-    }
-    
-    // Prepare for transition to flying formation
-    prepareForFlying() {
-        // Nothing needs to be done here now - boids are already created
-        // Just keep track of original positions for potential transitions
-        for (const boid of this.boids) {
-            boid.originalX = boid.position.x;
-            boid.originalY = boid.position.y;
-            boid.isStatic = false;
-        }
-    }
-    
-    // Transition from static to flying boids
-    transitionToFlying(progress) {
-        if (this.boids.length === 0) return;
-        
-        // Update and display each boid
-        for (let i = 0; i < this.boids.length; i++) {
-            const boid = this.boids[i];
-            
-            // Gradually increase freedom as progress increases
-            const startTime = i / this.boids.length; // Staggered start times
-            const boidProgress = constrain((progress - startTime) * 3, 0, 1);
-            
-            if (boidProgress > 0) {
-                // Allow boid to move more freely as transition progresses
-                boid.isStatic = false;
-                boid.velocity.mult(0.95 + boidProgress * 0.1);
-                boid.maxSpeed = 1 + boidProgress * 3;
-                
-                // Add some randomness to break away from starting position
-                if (boidProgress < 0.5) {
-                    const randomForce = p5.Vector.random2D();
-                    randomForce.mult(0.1 * boidProgress);
-                    boid.applyForce(randomForce);
-                }
-                
-                // Update and display the boid
-                boid.update();
-                boid.display();
-                
-                // Emit particles occasionally during transition
-                if (random() < 0.05 * boidProgress) {
-                    this.particleSystem.emit(boid.position.x, boid.position.y, 1);
-                }
-            } else {
-                // Just display the boid at its starting position
-                boid.display();
-            }
-        }
-        
-        // Update and display particles
-        this.particleSystem.update();
-        this.particleSystem.display();
-    }
-    
-    // Update and display boids in flying mode
-    updateAndDisplayFlyingBoids() {
-        if (this.boids.length === 0) return;
-        
-        // Update and display each boid
-        for (const boid of this.boids) {
-            boid.flock(this.boids);
-            boid.update();
-            boid.display();
-            
-            // Occasionally emit particles from boids
-            if (random() < 0.01) {
-                this.particleSystem.emit(boid.position.x, boid.position.y, 1);
-            }
-        }
-        
-        // Update and display particles
-        this.particleSystem.update();
-        this.particleSystem.display();
-    }
-    
-    // Prepare for transition to static formation
-    prepareForStatic() {
-        // Analyze current and next affirmations to determine which boids to keep
-        const currentChars = this.currentAffirmation.replace(/\s/g, '').split('');
-        const nextChars = this.nextAffirmation.replace(/\s/g, '').split('');
-        
-        // Create a map of character positions for the next affirmation
-        // Calculate new positions for the next affirmation text
-        // Break text into lines
-        const lines = this.breakTextIntoLines(this.nextAffirmation);
-        
-        // Create an array of character positions for the final text layout
-        const characterPositions = [];
-        
         let charIndex = 0;
+        let totalChars = 0;
+        
+        // First count total visible characters (excluding spaces)
+        for (const line of lines) {
+            for (const char of line) {
+                if (char !== ' ') {
+                    totalChars++;
+                }
+            }
+        }
+        
+        // Now create character objects
         for (let i = 0; i < lines.length; i++) {
             const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
             
             for (let j = 0; j < lines[i].length; j++) {
                 const char = lines[i][j];
                 
-                // Skip spaces
+                // Skip spaces (we don't animate them)
                 if (char !== ' ') {
                     const lineX = this.textX - textWidth(lines[i]) / 2;
-                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
+                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
                     
-                    characterPositions.push({
+                    // Add randomness to the animation order (0-1 normalized)
+                    const randomDelay = random(0, 0.3);
+                    const normalizedIndex = charIndex / totalChars;
+                    
+                    this.characters.push({
                         char: char,
                         x: charX,
                         y: lineY,
-                        index: charIndex
+                        opacity: 0, // Start fully transparent
+                        animationStart: millis() + (normalizedIndex + randomDelay) * this.staggerDelay,
+                        fadeIn: true,
+                        fadeOut: false,
+                        isSpace: false
+                    });
+                    
+                    charIndex++;
+                } else {
+                    // Add spaces as non-animated placeholders
+                    const lineX = this.textX - textWidth(lines[i]) / 2;
+                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
+                    
+                    this.characters.push({
+                        char: char,
+                        x: charX,
+                        y: lineY,
+                        opacity: 0,
+                        isSpace: true
                     });
                 }
+            }
+        }
+    }
+    
+    // Display and update all characters
+    updateAndDisplayCharacters() {
+        const currentTime = millis();
+        
+        push();
+        textAlign(CENTER, CENTER);
+        textSize(this.fontSize);
+        
+        for (const character of this.characters) {
+            // Skip animation for spaces
+            if (character.isSpace) {
+                continue;
+            }
+            
+            // Calculate fade progress
+            if (character.fadeIn && currentTime >= character.animationStart) {
+                const elapsed = currentTime - character.animationStart;
+                const progress = constrain(elapsed / this.fadeInDuration, 0, 1);
+                
+                // Apply easing for smoother animation
+                character.opacity = 255 * this.easeInOutCubic(progress);
+                
+                // Complete fade in
+                if (progress >= 1) {
+                    character.fadeIn = false;
+                    character.opacity = 255;
+                }
+            }
+            
+            // Handle fade out
+            if (character.fadeOut && currentTime >= character.animationStart) {
+                const elapsed = currentTime - character.animationStart;
+                const progress = constrain(elapsed / this.fadeOutDuration, 0, 1);
+                
+                // Apply easing for smoother animation
+                character.opacity = 255 * (1 - this.easeInOutCubic(progress));
+                
+                // Complete fade out
+                if (progress >= 1) {
+                    character.fadeOut = false;
+                    character.opacity = 0;
+                }
+            }
+            
+            // Draw the character
+            fill(255, character.opacity);
+            text(character.char, character.x, character.y);
+        }
+        
+        pop();
+    }
+    
+    // Prepare for transition to new affirmation
+    prepareForTransition() {
+        // Set all current characters to fade out with staggered timing
+        const totalChars = this.characters.filter(c => !c.isSpace).length;
+        let charIndex = 0;
+        
+        for (let i = 0; i < this.characters.length; i++) {
+            if (!this.characters[i].isSpace) {
+                // Add randomness to animation order
+                const randomDelay = random(0, 0.3);
+                const normalizedIndex = charIndex / totalChars;
+                
+                this.characters[i].fadeOut = true;
+                this.characters[i].animationStart = millis() + (normalizedIndex + randomDelay) * this.staggerDelay;
                 charIndex++;
             }
         }
-
-        // Build character position map for faster lookup
-        const characterMap = {};
-        for (const pos of characterPositions) {
-            if (!characterMap[pos.char]) {
-                characterMap[pos.char] = [];
+    }
+    
+    // Create new characters for the next affirmation
+    createNewCharacters() {
+        // Calculate text size for new text
+        textSize(this.fontSize);
+        const textWidth = this.calculateTextWidth(this.nextAffirmation);
+        if (textWidth > this.maxWidth) {
+            this.fontSize = floor(this.fontSize * (this.maxWidth / textWidth));
+            textSize(this.fontSize);
+        }
+        
+        // Create new characters
+        const lines = this.breakTextIntoLines(this.nextAffirmation);
+        const newCharacters = [];
+        let charIndex = 0;
+        let totalChars = 0;
+        
+        // First count total visible characters
+        for (const line of lines) {
+            for (const char of line) {
+                if (char !== ' ') {
+                    totalChars++;
+                }
             }
-            characterMap[pos.char].push({
-                x: pos.x,
-                y: pos.y,
-                index: pos.index,
-                assigned: false
-            });
         }
         
-        // Mark all current boids as candidates for removal initially
-        for (const boid of this.boids) {
-            boid.isForRemoval = true;
-            boid.hasTargetAssigned = false;
-        }
-        
-        // First pass: Assign positions to existing boids that match characters in the new text
-        // This prioritizes reusing existing boids for a smoother transition
-        const newBoids = [];
-        for (const boid of this.boids) {
-            const char = boid.character;
+        // Now create character objects
+        for (let i = 0; i < lines.length; i++) {
+            const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
             
-            // Check if this character is needed in the new text
-            if (characterMap[char] && characterMap[char].some(pos => !pos.assigned)) {
-                // Find the closest position for this character
-                let closestPos = null;
-                let closestDist = Infinity;
+            for (let j = 0; j < lines[i].length; j++) {
+                const char = lines[i][j];
                 
-                for (const pos of characterMap[char]) {
-                    if (!pos.assigned) {
-                        const d = dist(boid.position.x, boid.position.y, pos.x, pos.y);
-                        if (d < closestDist) {
-                            closestDist = d;
-                            closestPos = pos;
-                        }
-                    }
-                }
+                // Skip animation for spaces but include them
+                const isSpace = char === ' ';
+                const lineX = this.textX - textWidth(lines[i]) / 2;
+                const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
                 
-                if (closestPos) {
-                    // Assign this position to this boid
-                    closestPos.assigned = true;
-                    boid.targetPosition.x = closestPos.x;
-                    boid.targetPosition.y = closestPos.y;
-                    boid.isForRemoval = false;
-                    boid.hasTargetAssigned = true;
-                    boid.setTargetMode(true);
+                if (!isSpace) {
+                    // Add randomness to animation order
+                    const randomDelay = random(0, 0.3);
+                    const normalizedIndex = charIndex / totalChars;
                     
-                    // Minimal staggering - arrival based on distance from current position
-                    const normalizedDist = constrain(closestDist / (width/2), 0, 1);
-                    boid.arrivalOrder = normalizedDist * 0.3; // Very small arrival order range (0-0.3)
+                    newCharacters.push({
+                        char: char,
+                        x: charX,
+                        y: lineY,
+                        opacity: 0, // Start fully transparent
+                        animationStart: millis() + (normalizedIndex + randomDelay) * this.staggerDelay * 1.5, // Delay new chars a bit more
+                        fadeIn: true,
+                        fadeOut: false,
+                        isSpace: false
+                    });
+                    
+                    charIndex++;
+                } else {
+                    // Add space as non-animated
+                    newCharacters.push({
+                        char: char,
+                        x: charX,
+                        y: lineY,
+                        opacity: 0,
+                        isSpace: true
+                    });
                 }
             }
         }
         
-        // Second pass: Create new boids for any unassigned positions
-        for (const char in characterMap) {
-            for (const pos of characterMap[char]) {
-                if (!pos.assigned) {
-                    // Create a new boid for this position
-                    const startX = random(width);
-                    const startY = random(height);
-                    const newBoid = new Boid(char, startX, startY, pos.x, pos.y);
-                    newBoid.setAlpha(0); // Start invisible
-                    newBoid.isNew = true;
-                    newBoid.hasTargetAssigned = true;
-                    newBoid.setTargetMode(true);
-                    
-                    // Very small staggering effect for consistent formation
-                    newBoid.arrivalOrder = 0.2; // Fixed small delay for all new boids
-                    
-                    newBoids.push(newBoid);
-                    pos.assigned = true;
-                }
-            }
-        }
-        
-        // Add any new boids to the main boids array
-        this.boids = [...this.boids, ...newBoids];
-        
-        // Update current affirmation to next
+        // Update characters array with new characters
+        this.characters = newCharacters;
         this.currentAffirmation = this.nextAffirmation;
         this.nextAffirmation = '';
     }
     
-    // Transition from flying to static formation
-    transitionToStatic(progress) {
-        // Calculate fadeIn/fadeOut based on progress
-        const fadeOutValue = 255 * (1 - progress);
-        const fadeInValue = 255 * progress;
-        
-        // Accelerate the transition by boosting progress
-        // This will make everything happen more quickly
-        const acceleratedProgress = Math.pow(progress, 0.7); // Apply an easing curve to progress
-        
-        // Update and display all boids
-        for (const boid of this.boids) {
-            // Handle fading out of unused characters
-            if (boid.isForRemoval) {
-                boid.setAlpha(fadeOutValue);
-                if (progress > 0.5) {
-                    const randomForce = p5.Vector.random2D();
-                    randomForce.mult(0.05);
-                    boid.applyForce(randomForce);
-                }
-            } 
-            // Handle fading in of new characters
-            else if (boid.isNew) {
-                boid.setAlpha(fadeInValue);
-            }
-            
-            // Calculate individual boid transition progress based on arrivalOrder
-            // Reduce staggering even further and accelerate progress
-            const boidProgress = constrain((acceleratedProgress - boid.arrivalOrder * 0.15) * 2.0, 0, 1);
-            
-            // Only move boids according to their individual progress
-            if (boidProgress > 0 && !boid.isForRemoval) {
-                // Adjust maxSpeed based on progress to slow down as they arrive
-                boid.maxSpeed = 5 * (1 - boidProgress * 0.9);
-                
-                // Set isSettling flag when getting close to destination
-                boid.isSettling = boidProgress > 0.6;
-                
-                // Calculate distance to target
-                const distToTarget = dist(
-                    boid.position.x, boid.position.y,
-                    boid.targetPosition.x, boid.targetPosition.y
-                );
-                
-                // Make boids settle much earlier and more aggressively
-                if (distToTarget < 5 && boidProgress > 0.4) {
-                    // Just jump directly to the target position when close enough
-                    boid.position.x = boid.targetPosition.x;
-                    boid.position.y = boid.targetPosition.y;
-                    boid.velocity.mult(0);
-                    boid.isStatic = true; // Set to static mode
-                } else {
-                    // Apply force toward target based on individual progress
-                    const arriveForce = boid.arrive(boid.targetPosition);
-                    // Use much stronger force to quickly move to position
-                    arriveForce.mult(0.8 + boidProgress * 1.2); 
-                    boid.applyForce(arriveForce);
-                    
-                    // Add a direct dampening of velocity when getting closer to target
-                    if (distToTarget < 50) {
-                        // The closer to target, the more we slow down
-                        const slowdownFactor = map(distToTarget, 0, 50, 0.7, 0.95);
-                        boid.velocity.mult(slowdownFactor);
-                    }
-                }
-            }
-            
-            // Update all boids
-            boid.flock(this.boids);
-            boid.update();
-            boid.display();
-            
-            // Emit particles during transition
-            if (random() < 0.02 * progress) {
-                this.particleSystem.emit(boid.position.x, boid.position.y, 1);
-            }
-        }
-        
-        // Update and display particles
-        this.particleSystem.update();
-        this.particleSystem.display();
-        
-        // Clean up boids earlier in the transition
-        if (progress >= 0.7) {
-            // Remove boids marked for removal
-            this.boids = this.boids.filter(boid => !boid.isForRemoval);
-            
-            // Reset flags for next cycle
-            for (const boid of this.boids) {
-                boid.isNew = false;
-                boid.hasTargetAssigned = false;
-            }
-        }
+    // Check if all characters have completed their fade out
+    isFadeOutComplete() {
+        return !this.characters.some(c => c.fadeOut);
+    }
+    
+    // Check if all characters have completed their fade in
+    isFadeInComplete() {
+        return !this.characters.some(c => c.fadeIn);
     }
     
     // Handle window resize
     handleResize() {
         this.textX = width / 2;
         this.textY = height / 2;
+        this.maxWidth = width * 0.8;
         
-        // Recalculate font size if needed
-        this.initializeTextSize();
-        
-        // Reposition boids if they're in static formation
-        if (this.boids.length > 0) {
-            // Break text into lines
-            const lines = this.breakTextIntoLines(this.currentAffirmation);
+        // Recalculate positions of characters
+        if (this.characters.length > 0) {
+            // Store current opacity and animation states
+            const opacityMap = new Map();
+            const fadeInMap = new Map();
+            const fadeOutMap = new Map();
+            const animationStartMap = new Map();
             
-            // Reposition each boid for the new screen size
-            // This logic is similar to prepareInitialBoids
-            let boidIndex = 0;
-            let charCount = 0;
+            for (let i = 0; i < this.characters.length; i++) {
+                opacityMap.set(i, this.characters[i].opacity);
+                fadeInMap.set(i, this.characters[i].fadeIn);
+                fadeOutMap.set(i, this.characters[i].fadeOut);
+                animationStartMap.set(i, this.characters[i].animationStart);
+            }
+            
+            // Reinitialize with the current affirmation to update positions
+            this.initializeTextSize();
+            
+            // Create new character array with updated positions
+            const lines = this.breakTextIntoLines(this.currentAffirmation);
+            const newCharacters = [];
+            let index = 0;
             
             for (let i = 0; i < lines.length; i++) {
                 const lineY = this.textY - ((lines.length - 1) * this.fontSize * this.lineHeight / 2) + (i * this.fontSize * this.lineHeight);
                 
                 for (let j = 0; j < lines[i].length; j++) {
                     const char = lines[i][j];
+                    const lineX = this.textX - textWidth(lines[i]) / 2;
+                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
                     
-                    // Skip spaces
-                    if (char !== ' ') {
-                        if (boidIndex < this.boids.length) {
-                            const lineX = this.textX - textWidth(lines[i]) / 2;
-                            const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(lines[i][j]) / 2;
-                            
-                            // Update boid position and target
-                            const boid = this.boids[boidIndex];
-                            
-                            // Only update if the boid is in static mode
-                            if (boid.isStatic) {
-                                boid.position.x = charX;
-                                boid.position.y = lineY;
-                                boid.targetPosition.x = charX;
-                                boid.targetPosition.y = lineY;
-                            }
-                            
-                            boidIndex++;
-                        }
+                    if (index < this.characters.length) {
+                        newCharacters.push({
+                            char: char,
+                            x: charX,
+                            y: lineY,
+                            opacity: opacityMap.get(index) || 0,
+                            animationStart: animationStartMap.get(index) || 0,
+                            fadeIn: fadeInMap.get(index) || false,
+                            fadeOut: fadeOutMap.get(index) || false,
+                            isSpace: char === ' '
+                        });
+                        
+                        index++;
                     }
-                    charCount++;
                 }
             }
+            
+            this.characters = newCharacters;
         }
     }
     
-    // Handle mouse influence for boids
-    handleMouseInfluence(mouseX, mouseY) {
-        for (const boid of this.boids) {
-            boid.applyMouseInfluence(mouseX, mouseY, this.mouseInfluenceType === 'attract');
-        }
+    // Easing function for smooth animations
+    easeInOutCubic(x) {
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
     }
     
-    // Toggle between attract and repel mouse influence
-    toggleMouseInfluence() {
-        this.mouseInfluenceType = this.mouseInfluenceType === 'attract' ? 'repel' : 'attract';
-        return this.mouseInfluenceType;
-    }
-    
-    // Fetch an affirmation from the API
+    // Placeholder methods for future API implementation
     async fetchAffirmation() {
-        // To be implemented with Cloudflare Worker
-        return "You are worthy of love and belong exactly where you are.";
+        return "Peace begins with the compassion you show yourself.";
     }
     
-    // Fetch a related affirmation from the API based on the current one
     async fetchRelatedAffirmation(currentAffirmation) {
-        // To be implemented with Cloudflare Worker and Gemini API
-        return "Your journey is uniquely yours, and every step has meaning.";
+        return "You carry within you the power to begin again, no matter what came before.";
     }
 } 

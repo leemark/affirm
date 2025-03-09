@@ -1,20 +1,9 @@
 // Global variables
 let canvas;
 let affirmationManager;
-let currentMode = 'static'; // 'static', 'transition', 'flying'
-let transitionProgress = 0;
-let transitionDirection = 'to-flying'; // 'to-flying', 'to-static'
-let transitionDuration = 3000; // milliseconds for boids transition
-let textTransitionDuration = 2500; // milliseconds for text transition (shortened for faster formation)
-let transitionStartTime = 0;
-let displayDuration = 6000; // how long to display text before transition
+let currentState = 'initializing'; // 'initializing', 'displaying', 'transitioning', 'creating'
+let displayDuration = 6000; // how long to display text before transition (ms)
 let displayStartTime = 0;
-let flyingDuration = 8000; // how long boids fly before next affirmation
-let flyingStartTime = 0;
-
-// Constants
-const MAX_PARTICLES = 100;
-const TRAILS_ENABLED = false;
 
 // P5.js setup function - runs once at the beginning
 function setup() {
@@ -28,12 +17,12 @@ function setup() {
     
     // Load initial affirmation
     affirmationManager.loadInitialAffirmation().then(() => {
-        // Start the display cycle
-        displayStartTime = millis();
-        currentMode = 'static';
+        // Initialize the first set of characters with fade-in animation
+        affirmationManager.initializeCharacters();
         
-        // Prepare initial boids in static formation
-        affirmationManager.prepareInitialBoids();
+        // Set current state and start timer
+        currentState = 'displaying';
+        displayStartTime = millis();
         
         // Hide loading indicator
         document.getElementById('loading').classList.add('hidden');
@@ -49,61 +38,45 @@ function draw() {
     background(0); // Black background
 
     // Handle different states
-    switch (currentMode) {
-        case 'static':
-            // Display boids in static formation (as text)
-            affirmationManager.updateAndDisplayStaticBoids();
-            
-            // Check if it's time to transition to flying mode
-            if (millis() - displayStartTime > displayDuration) {
-                currentMode = 'transition';
-                transitionDirection = 'to-flying';
-                transitionStartTime = millis();
-                transitionProgress = 0;
-                affirmationManager.prepareForFlying();
-            }
+    switch (currentState) {
+        case 'initializing':
+            // Just show loading state, handled by HTML/CSS
             break;
             
-        case 'transition':
-            // Calculate transition progress (0 to 1)
-            if (transitionDirection === 'to-flying') {
-                transitionProgress = constrain((millis() - transitionStartTime) / transitionDuration, 0, 1);
-            } else { // to-static - use longer duration for smoother effect
-                transitionProgress = constrain((millis() - transitionStartTime) / textTransitionDuration, 0, 1);
-            }
+        case 'displaying':
+            // Display and update characters
+            affirmationManager.updateAndDisplayCharacters();
             
-            if (transitionDirection === 'to-flying') {
-                affirmationManager.transitionToFlying(transitionProgress);
-                
-                // Check if transition is complete
-                if (transitionProgress >= 1) {
-                    currentMode = 'flying';
-                    flyingStartTime = millis();
-                }
-            } else { // to-static
-                affirmationManager.transitionToStatic(transitionProgress);
-                
-                // Check if transition is complete
-                if (transitionProgress >= 1) {
-                    currentMode = 'static';
-                    displayStartTime = millis();
-                }
-            }
-            break;
-            
-        case 'flying':
-            affirmationManager.updateAndDisplayFlyingBoids();
-            
-            // Check if it's time to transition back to static
-            if (millis() - flyingStartTime > flyingDuration) {
-                // Request new affirmation if needed
+            // Check if it's time to transition to a new affirmation
+            if (millis() - displayStartTime > displayDuration && affirmationManager.isFadeInComplete()) {
+                // Request the next affirmation
                 affirmationManager.requestNextAffirmation().then(() => {
-                    currentMode = 'transition';
-                    transitionDirection = 'to-static';
-                    transitionStartTime = millis();
-                    transitionProgress = 0;
-                    affirmationManager.prepareForStatic();
+                    // Start fading out current characters
+                    affirmationManager.prepareForTransition();
+                    currentState = 'transitioning';
                 });
+            }
+            break;
+            
+        case 'transitioning':
+            // Display characters that are fading out
+            affirmationManager.updateAndDisplayCharacters();
+            
+            // When all characters have faded out, create new ones
+            if (affirmationManager.isFadeOutComplete()) {
+                affirmationManager.createNewCharacters();
+                currentState = 'creating';
+            }
+            break;
+            
+        case 'creating':
+            // Display characters that are fading in
+            affirmationManager.updateAndDisplayCharacters();
+            
+            // When all characters have faded in, go back to displaying state
+            if (affirmationManager.isFadeInComplete()) {
+                currentState = 'displaying';
+                displayStartTime = millis();
             }
             break;
     }
@@ -114,15 +87,8 @@ function windowResized() {
     const container = document.getElementById('canvas-container');
     resizeCanvas(container.offsetWidth, container.offsetHeight);
     
-    // Update affirmation positioning if needed
+    // Update affirmation positioning
     if (affirmationManager) {
         affirmationManager.handleResize();
-    }
-}
-
-// Mouse interaction for boids
-function mouseMoved() {
-    if (currentMode === 'flying' && affirmationManager) {
-        affirmationManager.handleMouseInfluence(mouseX, mouseY);
     }
 } 

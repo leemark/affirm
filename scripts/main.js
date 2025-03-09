@@ -4,7 +4,8 @@ let affirmationManager;
 let currentMode = 'text'; // 'text', 'transition', 'boids'
 let transitionProgress = 0;
 let transitionDirection = 'to-boids'; // 'to-boids', 'to-text'
-let transitionDuration = 3000; // milliseconds
+let transitionDuration = 3000; // milliseconds for boids transition
+let textTransitionDuration = 4000; // milliseconds for text transition (longer for smoother effect)
 let transitionStartTime = 0;
 let displayDuration = 6000; // how long to display text before transition
 let displayStartTime = 0;
@@ -13,7 +14,7 @@ let boidsStartTime = 0;
 
 // Constants
 const MAX_PARTICLES = 100;
-const TRAILS_ENABLED = true;
+const TRAILS_ENABLED = false;
 
 // P5.js setup function - runs once at the beginning
 function setup() {
@@ -61,7 +62,11 @@ function draw() {
             
         case 'transition':
             // Calculate transition progress (0 to 1)
-            transitionProgress = constrain((millis() - transitionStartTime) / transitionDuration, 0, 1);
+            if (transitionDirection === 'to-boids') {
+                transitionProgress = constrain((millis() - transitionStartTime) / transitionDuration, 0, 1);
+            } else { // to-text - use longer duration for smoother effect
+                transitionProgress = constrain((millis() - transitionStartTime) / textTransitionDuration, 0, 1);
+            }
             
             if (transitionDirection === 'to-boids') {
                 affirmationManager.transitionToBoids(transitionProgress);
@@ -76,6 +81,10 @@ function draw() {
                 
                 // Check if transition is complete
                 if (transitionProgress >= 1) {
+                    // Reset text reveal for the new affirmation
+                    affirmationManager.textRevealProgress = 0;
+                    affirmationManager.lastCharacterTime = millis();
+                    
                     currentMode = 'text';
                     displayStartTime = millis();
                 }

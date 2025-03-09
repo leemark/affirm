@@ -160,6 +160,12 @@ class AffirmationManager {
             }
         }
         
+        // If transitioned from boids mode, instantly show all text
+        // to avoid another character-by-character reveal
+        if (this.textRevealProgress === 0 && this.boids.length > 0) {
+            this.textRevealProgress = totalChars;
+        }
+        
         // Display text up to the current reveal progress
         let charCount = 0;
         for (let i = 0; i < lines.length; i++) {
@@ -431,6 +437,9 @@ class AffirmationManager {
         const fadeOutValue = 255 * (1 - progress);
         const fadeInValue = 255 * progress;
         
+        // We'll render characters as individual boids through the entire transition
+        // This prevents the abrupt snap to the final text layout
+        
         // Update and display all boids
         for (const boid of this.boids) {
             // Handle fading out of unused characters
@@ -459,10 +468,23 @@ class AffirmationManager {
                 // Set isSettling flag when getting close to destination
                 boid.isSettling = boidProgress > 0.7;
                 
-                // Apply force toward target based on individual progress
-                const arriveForce = boid.arrive(boid.targetPosition);
-                arriveForce.mult(0.3 + boidProgress * 0.7); // Stronger force as progress increases
-                boid.applyForce(arriveForce);
+                // Calculate distance to target
+                const distToTarget = dist(
+                    boid.position.x, boid.position.y,
+                    boid.targetPosition.x, boid.targetPosition.y
+                );
+                
+                // If very close to target and progress is high enough, fully settle in place
+                if (distToTarget < 1 && progress > 0.8) {
+                    boid.position.x = boid.targetPosition.x;
+                    boid.position.y = boid.targetPosition.y;
+                    boid.velocity.mult(0);
+                } else {
+                    // Apply force toward target based on individual progress
+                    const arriveForce = boid.arrive(boid.targetPosition);
+                    arriveForce.mult(0.3 + boidProgress * 0.7); // Stronger force as progress increases
+                    boid.applyForce(arriveForce);
+                }
             }
             
             // Update all boids
@@ -484,6 +506,12 @@ class AffirmationManager {
         if (progress >= 0.95) {
             // Remove boids marked for removal
             this.boids = this.boids.filter(boid => !boid.isForRemoval);
+            
+            // Reset flags for next cycle
+            for (const boid of this.boids) {
+                boid.isNew = false;
+                boid.hasTargetAssigned = false;
+            }
         }
     }
     

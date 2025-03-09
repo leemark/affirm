@@ -1,0 +1,17 @@
+# Development tracking files
+DEVELOPMENT_LOG.md
+CURSOR_CONTEXT.md
+PROJECT_PLAN.md
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/ 

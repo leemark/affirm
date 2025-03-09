@@ -1,0 +1,18 @@
+name = "affirm-api"
+main = "index.js"
+compatibility_date = "2023-10-02"
+
+# Specify the account ID (replace with your account ID)
+# account_id = "your-account-id"
+
+# Define environment variables for different environments
+[vars]
+# You'll need to set these in the Cloudflare dashboard or via wrangler
+# GEMINI_API_KEY = ""
+
+# Or use secrets for more security (recommended)
+# Run: wrangler secret put GEMINI_API_KEY
+
+# Define routes if using Workers Sites
+# [site]
+# bucket = "./public" 

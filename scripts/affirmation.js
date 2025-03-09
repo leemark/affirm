@@ -367,9 +367,21 @@ class AffirmationManager {
             }
         }
         
-        // Shuffle the character positions array for random arrival order
-        // Comment this line for sequential arrival or uncomment for random arrival
-        characterPositions.sort(() => Math.random() - 0.5);
+        // Instead of completely random shuffling, we'll use a more strategic approach
+        // Sort by distance from current center to reduce the chaotic appearance
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        // Apply a semi-random ordering that still maintains some structure
+        characterPositions.sort((a, b) => {
+            // Compute distances from center
+            const distA = dist(a.x, a.y, centerX, centerY);
+            const distB = dist(b.x, b.y, centerX, centerY);
+            
+            // 70% weight to distance (closer characters arrive first)
+            // 30% weight to randomness (for some variation)
+            return (distA * 0.7 + random(-10, 10) * 0.3) - (distB * 0.7 + random(-10, 10) * 0.3);
+        });
         
         // Assign arrival order to boids
         for (let i = 0; i < characterPositions.length; i++) {
@@ -385,7 +397,8 @@ class AffirmationManager {
                 availableBoid.hasTargetAssigned = true;
                 
                 // Assign an arrival order (0 to 1) for staggered arrival
-                availableBoid.arrivalOrder = i / characterPositions.length;
+                // Use a narrower range to reduce the staggering effect
+                availableBoid.arrivalOrder = i / characterPositions.length * 0.7;
             } else {
                 // We need to create a new boid for this character
                 const startX = random(width);
@@ -397,7 +410,8 @@ class AffirmationManager {
                 newBoid.setTargetMode(true);
                 
                 // Assign an arrival order (0 to 1) for staggered arrival
-                newBoid.arrivalOrder = i / characterPositions.length;
+                // Use a narrower range to reduce the staggering effect
+                newBoid.arrivalOrder = i / characterPositions.length * 0.7;
                 
                 this.boids.push(newBoid);
             }
@@ -435,7 +449,8 @@ class AffirmationManager {
             
             // Calculate individual boid transition progress based on arrivalOrder
             // This creates a staggered arrival effect
-            const boidProgress = constrain((progress - boid.arrivalOrder * 0.5) * 1.5, 0, 1);
+            // Reduce the stagger effect by lowering the multiplier from 0.5 to 0.3
+            const boidProgress = constrain((progress - boid.arrivalOrder * 0.3) * 1.5, 0, 1);
             
             // Only move boids according to their individual progress
             if (boidProgress > 0 && !boid.isForRemoval) {
@@ -451,8 +466,9 @@ class AffirmationManager {
                     boid.targetPosition.x, boid.targetPosition.y
                 );
                 
-                // If very close to target and progress is high enough, fully settle in place
-                if (distToTarget < 1 && progress > 0.8) {
+                // If close to target and boid's individual progress is high enough, fully settle in place
+                // Lower the distance threshold and the progress threshold to settle earlier
+                if (distToTarget < 2 && boidProgress > 0.6) {
                     boid.position.x = boid.targetPosition.x;
                     boid.position.y = boid.targetPosition.y;
                     boid.velocity.mult(0);
@@ -460,7 +476,8 @@ class AffirmationManager {
                 } else {
                     // Apply force toward target based on individual progress
                     const arriveForce = boid.arrive(boid.targetPosition);
-                    arriveForce.mult(0.3 + boidProgress * 0.7); // Stronger force as progress increases
+                    // Increase the minimum force for faster initial movement
+                    arriveForce.mult(0.5 + boidProgress * 0.7); // Stronger force as progress increases
                     boid.applyForce(arriveForce);
                 }
             }

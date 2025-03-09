@@ -5,6 +5,7 @@ class AffirmationManager {
         this.fontSize = 32;
         this.isReady = false;
         this.characters = []; // Will store all character objects
+        this.particleSystem = new ParticleSystem();
         
         // Configuration
         this.lineHeight = 1.5;
@@ -13,9 +14,10 @@ class AffirmationManager {
         this.textY = height / 2;
         
         // Animation timing (in milliseconds)
-        this.fadeInDuration = 2000; 
+        this.fadeInDuration = 800; // Shorter fade-in for each character
         this.fadeOutDuration = 1500;
-        this.staggerDelay = 70; // Delay between each character's animation
+        this.staggerDelay = 100; // More pronounced delay between characters
+        this.particleEmissionRate = 0.4; // Chance to emit particles (0-1)
     }
     
     // Load the initial affirmation from the API
@@ -213,19 +215,21 @@ class AffirmationManager {
                         
                         const charX = lineX + substringWidth + charWidth / 2;
                         
-                        // Add randomness to the animation order (0-1 normalized)
-                        const randomDelay = random(0, 0.3);
-                        const normalizedIndex = charIndex / totalChars;
+                        // For more sequential appearance, use index directly with less randomness
+                        // This makes letters appear more one-by-one
+                        const sequentialDelay = charIndex * this.staggerDelay;
                         
                         this.characters.push({
                             char: char,
                             x: charX,
                             y: lineY,
                             opacity: 0, // Start fully transparent
-                            animationStart: millis() + (normalizedIndex + randomDelay) * this.staggerDelay,
+                            animationStart: millis() + sequentialDelay,
                             fadeIn: true,
                             fadeOut: false,
-                            isSpace: false
+                            isSpace: false,
+                            hasEmittedParticles: false, // Track if we've emitted particles already
+                            particleEmissionThreshold: 0.7 // Emit particles when opacity reaches this level
                         });
                         
                         charIndex++;
@@ -296,6 +300,19 @@ class AffirmationManager {
                     // Apply easing for smoother animation
                     character.opacity = 255 * this.easeInOutCubic(progress);
                     
+                    // Emit particles when the character is reaching visibility
+                    if (!character.hasEmittedParticles && character.opacity > 255 * character.particleEmissionThreshold) {
+                        // Emit particles at the character position
+                        const particleCount = floor(random(3, 8));
+                        this.particleSystem.emit(character.x, character.y, particleCount);
+                        character.hasEmittedParticles = true;
+                    }
+                    
+                    // Continue emitting particles occasionally while fading in
+                    if (progress < 1 && random() < this.particleEmissionRate * 0.05) {
+                        this.particleSystem.emit(character.x, character.y, 1);
+                    }
+                    
                     // Complete fade in
                     if (progress >= 1) {
                         character.fadeIn = false;
@@ -310,6 +327,11 @@ class AffirmationManager {
                     
                     // Apply easing for smoother animation
                     character.opacity = 255 * (1 - this.easeInOutCubic(progress));
+                    
+                    // Emit particles occasionally while fading out
+                    if (random() < this.particleEmissionRate * 0.02) {
+                        this.particleSystem.emit(character.x, character.y, 1);
+                    }
                     
                     // Complete fade out
                     if (progress >= 1) {
@@ -327,6 +349,10 @@ class AffirmationManager {
         }
         
         pop();
+        
+        // Update and display particle system
+        this.particleSystem.update();
+        this.particleSystem.display();
     }
     
     // Prepare for transition to new affirmation
@@ -337,12 +363,10 @@ class AffirmationManager {
         
         for (let i = 0; i < this.characters.length; i++) {
             if (!this.characters[i].isSpace) {
-                // Add randomness to animation order
-                const randomDelay = random(0, 0.3);
-                const normalizedIndex = charIndex / totalChars;
-                
+                // More sequential fade-out with less randomness
                 this.characters[i].fadeOut = true;
-                this.characters[i].animationStart = millis() + (normalizedIndex + randomDelay) * this.staggerDelay;
+                this.characters[i].animationStart = millis() + (charIndex * this.staggerDelay * 0.5);
+                this.characters[i].hasEmittedParticles = false; // Reset particle emission flag
                 charIndex++;
             }
         }
@@ -406,19 +430,20 @@ class AffirmationManager {
                 const charX = lineX + substringWidth + charWidth / 2;
                 
                 if (!isSpace) {
-                    // Add randomness to animation order
-                    const randomDelay = random(0, 0.3);
-                    const normalizedIndex = charIndex / totalChars;
+                    // Make fade-in more sequential - just use index directly for clearer sequence
+                    const sequentialDelay = charIndex * this.staggerDelay;
                     
                     newCharacters.push({
                         char: char,
                         x: charX,
                         y: lineY,
                         opacity: 0, // Start fully transparent
-                        animationStart: millis() + (normalizedIndex + randomDelay) * this.staggerDelay * 1.5, // Delay new chars a bit more
+                        animationStart: millis() + sequentialDelay,
                         fadeIn: true,
                         fadeOut: false,
-                        isSpace: false
+                        isSpace: false,
+                        hasEmittedParticles: false,
+                        particleEmissionThreshold: 0.7
                     });
                     
                     charIndex++;

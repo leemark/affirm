@@ -109,6 +109,10 @@ class AffirmationManager {
     
     // Calculate the width of a text string
     calculateTextWidth(text) {
+        // Ensure we're in a drawing context for p5.js functions
+        push();
+        textSize(this.fontSize);
+        
         const lines = this.breakTextIntoLines(text);
         let maxLineWidth = 0;
         
@@ -119,33 +123,59 @@ class AffirmationManager {
             }
         }
         
+        pop();
         return maxLineWidth;
     }
     
     // Break text into lines based on max width
     breakTextIntoLines(text) {
+        // Ensure we're in a drawing context for p5.js functions
+        push();
+        textSize(this.fontSize);
+        
         const words = text.split(' ');
         const lines = [];
+        
+        // Handle empty text or single word
+        if (!words.length) {
+            pop();
+            return [''];
+        }
+        
         let currentLine = words[0];
         
         for (let i = 1; i < words.length; i++) {
             const word = words[i];
             const testLine = currentLine + ' ' + word;
             
-            if (textWidth(testLine) <= this.maxWidth) {
-                currentLine = testLine;
-            } else {
+            try {
+                if (textWidth(testLine) <= this.maxWidth) {
+                    currentLine = testLine;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            } catch (e) {
+                console.error("Error measuring text width:", e);
+                // Fallback: just add the word and move on
                 lines.push(currentLine);
                 currentLine = word;
             }
         }
         
         lines.push(currentLine);
+        pop();
         return lines;
     }
     
     // Create initial characters with fade-in animation
     initializeCharacters() {
+        console.log("Initializing characters for:", this.currentAffirmation);
+        
+        // Make sure we're using p5.js functions within draw context
+        push();
+        textSize(this.fontSize);
+        
         this.characters = [];
         
         const lines = this.breakTextIntoLines(this.currentAffirmation);
@@ -168,91 +198,132 @@ class AffirmationManager {
             for (let j = 0; j < lines[i].length; j++) {
                 const char = lines[i][j];
                 
-                // Skip spaces (we don't animate them)
-                if (char !== ' ') {
-                    const lineX = this.textX - textWidth(lines[i]) / 2;
-                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
-                    
-                    // Add randomness to the animation order (0-1 normalized)
-                    const randomDelay = random(0, 0.3);
-                    const normalizedIndex = charIndex / totalChars;
-                    
-                    this.characters.push({
-                        char: char,
-                        x: charX,
-                        y: lineY,
-                        opacity: 0, // Start fully transparent
-                        animationStart: millis() + (normalizedIndex + randomDelay) * this.staggerDelay,
-                        fadeIn: true,
-                        fadeOut: false,
-                        isSpace: false
-                    });
-                    
-                    charIndex++;
-                } else {
-                    // Add spaces as non-animated placeholders
-                    const lineX = this.textX - textWidth(lines[i]) / 2;
-                    const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
-                    
-                    this.characters.push({
-                        char: char,
-                        x: charX,
-                        y: lineY,
-                        opacity: 0,
-                        isSpace: true
-                    });
+                try {
+                    // Skip spaces (we don't animate them)
+                    if (char !== ' ') {
+                        const lineWidth = textWidth(lines[i]);
+                        const lineX = this.textX - lineWidth / 2;
+                        const charWidth = textWidth(char);
+                        let substringWidth = 0;
+                        
+                        // Calculate the width of the substring up to the current character
+                        if (j > 0) {
+                            substringWidth = textWidth(lines[i].substring(0, j));
+                        }
+                        
+                        const charX = lineX + substringWidth + charWidth / 2;
+                        
+                        // Add randomness to the animation order (0-1 normalized)
+                        const randomDelay = random(0, 0.3);
+                        const normalizedIndex = charIndex / totalChars;
+                        
+                        this.characters.push({
+                            char: char,
+                            x: charX,
+                            y: lineY,
+                            opacity: 0, // Start fully transparent
+                            animationStart: millis() + (normalizedIndex + randomDelay) * this.staggerDelay,
+                            fadeIn: true,
+                            fadeOut: false,
+                            isSpace: false
+                        });
+                        
+                        charIndex++;
+                    } else {
+                        // Add spaces as non-animated placeholders
+                        const lineWidth = textWidth(lines[i]);
+                        const lineX = this.textX - lineWidth / 2;
+                        const charWidth = textWidth(char);
+                        let substringWidth = 0;
+                        
+                        // Calculate the width of the substring up to the current character
+                        if (j > 0) {
+                            substringWidth = textWidth(lines[i].substring(0, j));
+                        }
+                        
+                        const charX = lineX + substringWidth + charWidth / 2;
+                        
+                        this.characters.push({
+                            char: char,
+                            x: charX,
+                            y: lineY,
+                            opacity: 0,
+                            isSpace: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error initializing character:", char, e);
                 }
             }
         }
+        
+        pop();
+        console.log("Created", this.characters.length, "characters");
     }
     
     // Display and update all characters
     updateAndDisplayCharacters() {
+        if (!this.characters || this.characters.length === 0) {
+            return; // No characters to display
+        }
+        
         const currentTime = millis();
         
         push();
         textAlign(CENTER, CENTER);
         textSize(this.fontSize);
         
+        // Draw spaces first (as background characters)
         for (const character of this.characters) {
-            // Skip animation for spaces
+            if (character.isSpace) {
+                // Spaces are just placeholders, no need to render them
+                continue;
+            }
+        }
+        
+        // Then draw all non-space characters with their fade effects
+        for (const character of this.characters) {
             if (character.isSpace) {
                 continue;
             }
             
-            // Calculate fade progress
-            if (character.fadeIn && currentTime >= character.animationStart) {
-                const elapsed = currentTime - character.animationStart;
-                const progress = constrain(elapsed / this.fadeInDuration, 0, 1);
-                
-                // Apply easing for smoother animation
-                character.opacity = 255 * this.easeInOutCubic(progress);
-                
-                // Complete fade in
-                if (progress >= 1) {
-                    character.fadeIn = false;
-                    character.opacity = 255;
+            try {
+                // Calculate fade progress
+                if (character.fadeIn && currentTime >= character.animationStart) {
+                    const elapsed = currentTime - character.animationStart;
+                    const progress = constrain(elapsed / this.fadeInDuration, 0, 1);
+                    
+                    // Apply easing for smoother animation
+                    character.opacity = 255 * this.easeInOutCubic(progress);
+                    
+                    // Complete fade in
+                    if (progress >= 1) {
+                        character.fadeIn = false;
+                        character.opacity = 255;
+                    }
                 }
-            }
-            
-            // Handle fade out
-            if (character.fadeOut && currentTime >= character.animationStart) {
-                const elapsed = currentTime - character.animationStart;
-                const progress = constrain(elapsed / this.fadeOutDuration, 0, 1);
                 
-                // Apply easing for smoother animation
-                character.opacity = 255 * (1 - this.easeInOutCubic(progress));
-                
-                // Complete fade out
-                if (progress >= 1) {
-                    character.fadeOut = false;
-                    character.opacity = 0;
+                // Handle fade out
+                if (character.fadeOut && currentTime >= character.animationStart) {
+                    const elapsed = currentTime - character.animationStart;
+                    const progress = constrain(elapsed / this.fadeOutDuration, 0, 1);
+                    
+                    // Apply easing for smoother animation
+                    character.opacity = 255 * (1 - this.easeInOutCubic(progress));
+                    
+                    // Complete fade out
+                    if (progress >= 1) {
+                        character.fadeOut = false;
+                        character.opacity = 0;
+                    }
                 }
+                
+                // Draw the character
+                fill(255, character.opacity);
+                text(character.char, character.x, character.y);
+            } catch (e) {
+                console.error("Error updating/displaying character:", character.char, e);
             }
-            
-            // Draw the character
-            fill(255, character.opacity);
-            text(character.char, character.x, character.y);
         }
         
         pop();
@@ -287,11 +358,14 @@ class AffirmationManager {
             this.nextAffirmation = "Each small step forward is still movement in the right direction.";
         }
         
+        // Make sure we're using p5.js functions within draw context
+        push(); // Save the current drawing state
+        
         // Calculate text size for new text
         textSize(this.fontSize);
-        const textWidth = this.calculateTextWidth(this.nextAffirmation);
-        if (textWidth > this.maxWidth) {
-            this.fontSize = floor(this.fontSize * (this.maxWidth / textWidth));
+        const calculatedTextWidth = this.calculateTextWidth(this.nextAffirmation);
+        if (calculatedTextWidth > this.maxWidth) {
+            this.fontSize = floor(this.fontSize * (this.maxWidth / calculatedTextWidth));
             textSize(this.fontSize);
         }
         
@@ -319,8 +393,17 @@ class AffirmationManager {
                 
                 // Skip animation for spaces but include them
                 const isSpace = char === ' ';
-                const lineX = this.textX - textWidth(lines[i]) / 2;
-                const charX = lineX + textWidth(lines[i].substring(0, j)) + textWidth(char) / 2;
+                const lineWidth = textWidth(lines[i]);
+                const lineX = this.textX - lineWidth / 2;
+                const charWidth = textWidth(char);
+                let substringWidth = 0;
+                
+                // Calculate the width of the substring up to the current character
+                if (j > 0) {
+                    substringWidth = textWidth(lines[i].substring(0, j));
+                }
+                
+                const charX = lineX + substringWidth + charWidth / 2;
                 
                 if (!isSpace) {
                     // Add randomness to animation order
@@ -351,6 +434,8 @@ class AffirmationManager {
                 }
             }
         }
+        
+        pop(); // Restore the drawing state
         
         // Update characters array with new characters
         this.characters = newCharacters;

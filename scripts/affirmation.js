@@ -53,6 +53,7 @@ class AffirmationManager {
     
     // Request the next affirmation from the API
     async requestNextAffirmation() {
+        console.log("Requesting next affirmation, current is:", this.currentAffirmation);
         try {
             // For now, use static placeholders until the API is implemented
             const affirmations = [
@@ -82,12 +83,14 @@ class AffirmationManager {
             }
             
             this.nextAffirmation = filteredAffirmations[Math.floor(Math.random() * filteredAffirmations.length)];
+            console.log("Selected next affirmation:", this.nextAffirmation);
             
             return this.nextAffirmation;
         } catch (error) {
             console.error('Error requesting next affirmation:', error);
             // Use a fallback
             this.nextAffirmation = "Every moment is a fresh beginning.";
+            console.log("Using fallback affirmation:", this.nextAffirmation);
             return this.nextAffirmation;
         }
     }
@@ -276,6 +279,14 @@ class AffirmationManager {
     
     // Create new characters for the next affirmation
     createNewCharacters() {
+        console.log("Creating new characters for: ", this.nextAffirmation);
+        
+        // If nextAffirmation is empty, something went wrong
+        if (!this.nextAffirmation || this.nextAffirmation.trim() === '') {
+            console.error("Error: Next affirmation is empty!");
+            this.nextAffirmation = "Each small step forward is still movement in the right direction.";
+        }
+        
         // Calculate text size for new text
         textSize(this.fontSize);
         const textWidth = this.calculateTextWidth(this.nextAffirmation);
@@ -345,16 +356,26 @@ class AffirmationManager {
         this.characters = newCharacters;
         this.currentAffirmation = this.nextAffirmation;
         this.nextAffirmation = '';
+        
+        console.log("Created", newCharacters.length, "characters");
     }
     
     // Check if all characters have completed their fade out
     isFadeOutComplete() {
-        return !this.characters.some(c => c.fadeOut);
+        // Check if there are any non-space characters still in fadeOut state
+        const visibleChars = this.characters.filter(c => !c.isSpace);
+        
+        // If no characters are still fading out and all opacities are 0, transition is complete
+        return !visibleChars.some(c => c.fadeOut || c.opacity > 0);
     }
     
     // Check if all characters have completed their fade in
     isFadeInComplete() {
-        return !this.characters.some(c => c.fadeIn);
+        // Check if there are any non-space characters still in fadeIn state
+        const visibleChars = this.characters.filter(c => !c.isSpace);
+        
+        // If no characters are still fading in and all opacities are 255, transition is complete
+        return !visibleChars.some(c => c.fadeIn) && visibleChars.every(c => c.opacity >= 254);
     }
     
     // Handle window resize

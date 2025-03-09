@@ -153,7 +153,7 @@ class AffirmationManager {
             try {
                 if (textWidth(testLine) <= this.maxWidth) {
                     currentLine = testLine;
-                } else {
+            } else {
                     lines.push(currentLine);
                     currentLine = word;
                 }
@@ -202,7 +202,7 @@ class AffirmationManager {
                 
                 try {
                     // Skip spaces (we don't animate them)
-                    if (char !== ' ') {
+                if (char !== ' ') {
                         const lineWidth = textWidth(lines[i]);
                         const lineX = this.textX - lineWidth / 2;
                         const charWidth = textWidth(char);
@@ -510,8 +510,8 @@ class AffirmationManager {
             }
             
             // Reinitialize with the current affirmation to update positions
-            this.initializeTextSize();
-            
+        this.initializeTextSize();
+        
             // Create new character array with updated positions
             const lines = this.breakTextIntoLines(this.currentAffirmation);
             const newCharacters = [];
@@ -549,6 +549,18 @@ class AffirmationManager {
     // Easing function for smooth animations
     easeInOutCubic(x) {
         return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    }
+    
+    // Emit particles from the cursor position
+    emitParticlesFromCursor(x, y, count = 5, color = [255, 255, 255]) {
+        // If there's no particle system yet, create one
+        if (!this.particleSystem) {
+            this.particleSystem = new ParticleSystem();
+        }
+        
+        // Emit cursor particles with the specified color
+        // Set isCursorParticle to true for special cursor particle behavior
+        this.particleSystem.emit(x, y, count, color, true);
     }
     
     // Placeholder methods for future API implementation

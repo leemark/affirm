@@ -21,6 +21,10 @@ class AffirmationManager {
         
         // API configuration
         this.API_ENABLED = false; // Set to true once the worker is deployed
+        
+        // Emotional context
+        this.selectedEmotion = null;
+        this.lastChoice = null;
     }
     
     // Load the initial affirmation from the API
@@ -622,5 +626,230 @@ class AffirmationManager {
         this.API_URL = apiUrl;
         this.API_ENABLED = true;
         console.log('API enabled with URL:', apiUrl);
+    }
+    
+    // Load the initial affirmation with emotion context
+    async loadInitialAffirmationWithEmotion(emotion) {
+        try {
+            this.selectedEmotion = emotion;
+            
+            if (this.API_ENABLED) {
+                // Use the API to get an emotion-based affirmation
+                this.currentAffirmation = await this.fetchEmotionAffirmation(emotion);
+            } else {
+                // Get a hardcoded affirmation appropriate for the emotion
+                this.currentAffirmation = this.getHardcodedEmotionAffirmation(emotion);
+            }
+            
+            // Setup is complete
+            this.isReady = true;
+            this.initializeTextSize();
+            
+            return this.currentAffirmation;
+        } catch (error) {
+            console.error('Error loading initial affirmation with emotion:', error);
+            // Use a fallback
+            this.currentAffirmation = "You are capable of amazing things.";
+            this.isReady = true;
+            this.initializeTextSize();
+            
+            return this.currentAffirmation;
+        }
+    }
+    
+    // Request the next affirmation with choice context
+    async requestNextAffirmationWithChoice(choice) {
+        try {
+            this.lastChoice = choice;
+            
+            if (this.API_ENABLED) {
+                // Use the API to get a choice-based affirmation
+                this.nextAffirmation = await this.fetchChoiceAffirmation(this.currentAffirmation, choice);
+            } else {
+                // Get a hardcoded affirmation for the choice
+                this.nextAffirmation = this.getHardcodedChoiceAffirmation(choice);
+            }
+            
+            console.log("Selected next affirmation with choice:", this.nextAffirmation);
+            
+            return this.nextAffirmation;
+        } catch (error) {
+            console.error('Error requesting next affirmation with choice:', error);
+            // Use a fallback
+            this.nextAffirmation = "Every moment is a fresh beginning.";
+            console.log("Using fallback affirmation:", this.nextAffirmation);
+            return this.nextAffirmation;
+        }
+    }
+    
+    // Get a hardcoded affirmation appropriate for the specified emotion
+    getHardcodedEmotionAffirmation(emotion) {
+        const emotionAffirmations = {
+            anxious: [
+                "Your anxiety does not define you; it's just weather passing through your mind.",
+                "In this moment, you are safe and doing the best you can.",
+                "Each breath you take is an anchor to the present, away from anxious thoughts."
+            ],
+            hopeful: [
+                "The light of possibility shines brightly when you keep hope in your heart.",
+                "Your optimism is planting seeds for beautiful tomorrows.",
+                "Hope lives within you, illuminating paths that fear tries to darken."
+            ],
+            tired: [
+                "Rest is not a luxury but essential nourishment for your extraordinary spirit.",
+                "Your worth is not measured by your productivity but by your presence.",
+                "Even in fatigue, your strength remains; it's just resting, not gone."
+            ],
+            sad: [
+                "Your sadness is evidence of your capacity to deeply feel and care.",
+                "This heaviness will lift; your heart knows the way back to lightness.",
+                "Your tears water the garden of compassion within you."
+            ],
+            calm: [
+                "The tranquility you feel is your natural state, always waiting beneath the noise.",
+                "Your peaceful center remains unchanged despite the world's chaos.",
+                "The serenity within you is a gift you can return to anytime."
+            ],
+            overwhelmed: [
+                "You need only focus on the next small step, not the entire mountain.",
+                "Breaking down what overwhelms you transforms mountains into manageable hills.",
+                "Your capacity to navigate complexity is greater than you realize."
+            ]
+        };
+        
+        // Get affirmations for the selected emotion, or use default if not found
+        const affirmations = emotionAffirmations[emotion] || [
+            "Your resilience through challenges reveals the depth of your strength.",
+            "Every experience is shaping you into the person you're meant to become.",
+            "The power to create positive change exists within you right now."
+        ];
+        
+        // Select a random affirmation from the array
+        return affirmations[Math.floor(Math.random() * affirmations.length)];
+    }
+    
+    // Get a hardcoded affirmation for the choice
+    getHardcodedChoiceAffirmation(choice) {
+        const choiceAffirmations = {
+            // Strength-focused choices
+            strength: [
+                "The reservoir of strength within you is deeper than any challenge you face.",
+                "Your resilience has been forged through every difficulty you've already overcome.",
+                "You possess the power to transform obstacles into stepping stones."
+            ],
+            inner_strength: [
+                "The quiet voice of courage within you speaks louder than any doubt.",
+                "Your inner strength grows each time you choose to persevere.",
+                "The wisdom of your heart guides you through uncertainty with grace."
+            ],
+            overcome_challenges: [
+                "Each challenge you face is an invitation to discover new capabilities.",
+                "You have weathered storms before and emerged stronger on the other side.",
+                "Your ability to adapt and overcome reveals your extraordinary nature."
+            ],
+            
+            // Gratitude-focused choices
+            gratitude: [
+                "Your appreciation for life's gifts multiplies their presence in your experience.",
+                "Gratitude opens your eyes to abundance that was always there.",
+                "The more you acknowledge life's blessings, the more they expand."
+            ],
+            appreciate_present: [
+                "This moment contains everything you need for peace and fulfillment.",
+                "Your presence in the now unlocks life's richest treasures.",
+                "The beauty of this moment unfolds when you give it your full attention."
+            ],
+            find_joy: [
+                "Your capacity for joy remains undiminished, waiting for your recognition.",
+                "Small moments of delight build a life of extraordinary happiness.",
+                "Your heart knows how to find light even in shadowed places."
+            ],
+            
+            // Peace-focused choices
+            inner_peace: [
+                "The sanctuary of peace within you remains untouched by external chaos.",
+                "Your tranquil center is always accessible, just a few breaths away.",
+                "Peace flows naturally when you release what you cannot control."
+            ],
+            mindful_presence: [
+                "Your full attention to this moment is the gateway to deeper awareness.",
+                "Mindfulness reveals the extraordinary beauty hidden in ordinary moments.",
+                "Your conscious presence transforms routine actions into sacred ritual."
+            ],
+            
+            // Growth-focused choices
+            personal_growth: [
+                "Every step in your evolution reveals new horizons of possibility.",
+                "Your commitment to growth guarantees that your future exceeds your past.",
+                "The path of self-discovery leads to treasures beyond imagination."
+            ],
+            embrace_change: [
+                "Your willingness to evolve makes you as limitless as the universe itself.",
+                "Embracing change activates the creative force within you.",
+                "Your adaptability is transforming challenges into opportunities for renewal."
+            ]
+        };
+        
+        // Get affirmations for the selected choice, or use default if not found
+        const affirmations = choiceAffirmations[choice] || [
+            "Your journey continues to unfold with purpose and meaning.",
+            "Each choice you make shapes the beautiful tapestry of your life.",
+            "The next chapter of your story contains wonderful possibilities."
+        ];
+        
+        // Select a random affirmation from the array
+        return affirmations[Math.floor(Math.random() * affirmations.length)];
+    }
+    
+    // API methods to fetch emotion-based and choice-based affirmations
+    async fetchEmotionAffirmation(emotion) {
+        try {
+            // Use the configured API URL
+            const response = await fetch(`${this.API_URL}/api/emotion-affirmation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ emotion })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch emotion-based affirmation');
+            }
+            
+            const data = await response.json();
+            return data.affirmation;
+        } catch (error) {
+            console.error('Error fetching emotion-based affirmation:', error);
+            // Fallback to a hardcoded emotion-based affirmation
+            return this.getHardcodedEmotionAffirmation(emotion);
+        }
+    }
+    
+    async fetchChoiceAffirmation(currentAffirmation, choice) {
+        try {
+            // Use the configured API URL
+            const response = await fetch(`${this.API_URL}/api/choice-affirmation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    previousAffirmation: currentAffirmation,
+                    choice
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch choice-based affirmation');
+            }
+            
+            const data = await response.json();
+            return data.affirmation;
+        } catch (error) {
+            console.error('Error fetching choice-based affirmation:', error);
+            // Fallback to a hardcoded choice-based affirmation
+            return this.getHardcodedChoiceAffirmation(choice);
+        }
     }
 } 

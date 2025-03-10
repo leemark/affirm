@@ -1,7 +1,8 @@
 // Global variables
 let canvas;
 let affirmationManager;
-let currentState = 'initializing'; // 'initializing', 'displaying', 'transitioning', 'creating'
+let interactiveUI;
+let currentState = 'emotion_selection'; // 'emotion_selection', 'initializing', 'displaying', 'transitioning', 'creating', 'choice_selection'
 let displayDuration = 15000; // how long to display text before transition (ms) - increased to 15 seconds
 let displayStartTime = 0;
 let lastStateChange = 0; // Track when we last changed states
@@ -15,6 +16,8 @@ let lastMouseX = 0, lastMouseY = 0; // Track previous mouse position for velocit
 let requestInProgress = false; // Track when an API request is in progress
 let lastApiRequestTime = 0; // Track when the last API request was made
 const MIN_API_INTERVAL = 15000; // Minimum time between API requests (15 seconds)
+let selectedEmotion = null; // Store the selected emotion
+let selectedChoice = null; // Store the selected choice
 
 // API Configuration
 // To enable the API after deploying the Cloudflare Worker:
@@ -31,27 +34,19 @@ function setup() {
     // Initialize affirmation manager
     affirmationManager = new AffirmationManager();
     
+    // Initialize interactive UI
+    interactiveUI = new InteractiveUI();
+    interactiveUI.initialize();
+    
     // To connect to the deployed API, uncomment the following line:
     if (typeof API_URL !== 'undefined') affirmationManager.enableAPI(API_URL);
     
     // Initialize timing variables
     lastApiRequestTime = millis() - MIN_API_INTERVAL; // Allow first API request immediately
     
-    // Load initial affirmation
-    affirmationManager.loadInitialAffirmation().then(() => {
-        // Update last API request time after loading initial affirmation
-        lastApiRequestTime = millis();
-        
-        // Initialize the first set of characters with fade-in animation
-        affirmationManager.initializeCharacters();
-        
-        // Set current state and start timer
-        changeState('displaying');
-        
-        // Hide loading indicator
-        document.getElementById('loading').classList.add('hidden');
-    });
-
+    // Show emotion selection UI
+    showEmotionSelectionUI();
+    
     // Set text properties
     textFont('Playfair Display');
     textAlign(CENTER, CENTER);
@@ -59,6 +54,82 @@ function setup() {
     // Initialize last mouse position
     lastMouseX = mouseX;
     lastMouseY = mouseY;
+    
+    // Hide loading indicator
+    document.getElementById('loading').classList.add('hidden');
+}
+
+// Show emotion selection UI
+function showEmotionSelectionUI() {
+    if (debugMode) console.log("Showing emotion selection UI");
+    
+    // Show the emotion selection UI and set callback
+    interactiveUI.showEmotionSelection((emotion) => {
+        selectedEmotion = emotion;
+        if (debugMode) console.log("Selected emotion:", emotion);
+        
+        // Start the affirmation process with the selected emotion
+        changeState('initializing');
+        loadInitialAffirmationWithEmotion(emotion);
+    });
+}
+
+// Show binary choice UI
+function showChoiceSelectionUI() {
+    if (debugMode) console.log("Showing choice selection UI");
+    
+    // Generate choices based on current affirmation
+    const choices = interactiveUI.generateChoiceOptions(affirmationManager.currentAffirmation);
+    
+    // Show the choice selection UI and set callback
+    interactiveUI.showChoiceSelection(choices, (choice) => {
+        selectedChoice = choice;
+        if (debugMode) console.log("Selected choice:", choice);
+        
+        // Reset the affirmation counter
+        interactiveUI.resetAffirmationCount();
+        
+        // Request next affirmation with the selected choice
+        requestNextAffirmationWithChoice(choice);
+    });
+}
+
+// Load initial affirmation with emotion context
+function loadInitialAffirmationWithEmotion(emotion) {
+    // Update last API request time
+    lastApiRequestTime = millis();
+    
+    // Load initial affirmation with emotion
+    affirmationManager.loadInitialAffirmationWithEmotion(emotion).then(() => {
+        // Initialize the first set of characters with fade-in animation
+        affirmationManager.initializeCharacters();
+        
+        // Set current state and start timer
+        changeState('displaying');
+        
+        // Show progress indicator
+        interactiveUI.updateProgressIndicator(1);
+        interactiveUI.showProgressIndicator();
+    });
+}
+
+// Request next affirmation with choice context
+function requestNextAffirmationWithChoice(choice) {
+    // Update last API request time
+    lastApiRequestTime = millis();
+    requestInProgress = true;
+    
+    if (debugMode) console.log("Requesting next affirmation with choice:", choice);
+    
+    // Request the next affirmation with choice
+    affirmationManager.requestNextAffirmationWithChoice(choice).then(() => {
+        // Start fading out current characters
+        affirmationManager.prepareForTransition();
+        changeState('transitioning');
+    }).catch(error => {
+        console.error("Error requesting next affirmation:", error);
+        requestInProgress = false;
+    });
 }
 
 // Helper function to change states with logging
@@ -67,9 +138,38 @@ function changeState(newState) {
     currentState = newState;
     lastStateChange = millis();
     
-    if (newState === 'displaying') {
-        displayStartTime = millis();
-        requestInProgress = false; // Reset flag when entering displaying state
+    // State-specific actions
+    switch (newState) {
+        case 'emotion_selection':
+            // Show the emotion selection UI
+            interactiveUI.showEmotionSelection();
+            break;
+            
+        case 'initializing':
+            // Hide progress indicator during initialization
+            interactiveUI.hideProgressIndicator();
+            break;
+            
+        case 'displaying':
+            displayStartTime = millis();
+            requestInProgress = false; // Reset flag when entering displaying state
+            
+            // Show progress indicator during display
+            interactiveUI.showProgressIndicator();
+            break;
+            
+        case 'transitioning':
+            // No specific actions needed
+            break;
+            
+        case 'creating':
+            // No specific actions needed
+            break;
+            
+        case 'choice_selection':
+            // Hide progress indicator during choice selection
+            interactiveUI.hideProgressIndicator();
+            break;
     }
 }
 
@@ -79,6 +179,10 @@ function draw() {
 
     // Handle different states
     switch (currentState) {
+        case 'emotion_selection':
+            // Just show emotion selection UI, handled by InteractiveUI
+            break;
+            
         case 'initializing':
             // Just show loading state, handled by HTML/CSS
             break;
@@ -87,10 +191,24 @@ function draw() {
             // Display and update characters
             affirmationManager.updateAndDisplayCharacters();
             
+            // Update progress indicator
+            const currentCount = interactiveUI.affirmationCount % interactiveUI.CHOICE_INTERVAL;
+            interactiveUI.updateProgressIndicator(currentCount === 0 ? interactiveUI.CHOICE_INTERVAL : currentCount);
+            
             // Check if it's time to transition to a new affirmation
             if (!requestInProgress && 
                 millis() - displayStartTime > displayDuration && 
                 affirmationManager.isFadeInComplete()) {
+                
+                // Increment affirmation count and check if it's time to show choices
+                if (interactiveUI.incrementAffirmationCount()) {
+                    if (debugMode) console.log("Time to show choices");
+                    
+                    // Show choice selection UI
+                    changeState('choice_selection');
+                    showChoiceSelectionUI();
+                    return;
+                }
                 
                 // Enforce minimum time between API requests
                 const currentTime = millis();
@@ -158,6 +276,10 @@ function draw() {
                 if (debugMode) console.log("Safety timeout in creating state");
                 changeState('displaying');
             }
+            break;
+            
+        case 'choice_selection':
+            // Just show choice selection UI, handled by InteractiveUI
             break;
     }
     

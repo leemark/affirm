@@ -69,7 +69,7 @@ async function generateRelatedAffirmation(previousAffirmation, apiKey) {
     
     // Get the generative model (Gemini)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-pro',
+      model: 'gemini-2.0-flash-exp',
       generationConfig: {
         temperature: 0.7,
         topP: 0.95,

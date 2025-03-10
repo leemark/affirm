@@ -3,7 +3,7 @@ main = "index.js"
 compatibility_date = "2023-10-02"
 
 # Specify the account ID (replace with your account ID)
-# account_id = "your-account-id"
+account_id = "9098bac5e73248e51e75892b33f0b9c0"
 
 # Define environment variables for different environments
 [vars]

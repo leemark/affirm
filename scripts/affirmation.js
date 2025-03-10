@@ -18,24 +18,29 @@ class AffirmationManager {
         this.fadeOutDuration = 1500;
         this.staggerDelay = 100; // More pronounced delay between characters
         this.particleEmissionRate = 0.4; // Chance to emit particles (0-1)
+        
+        // API configuration
+        this.API_ENABLED = false; // Set to true once the worker is deployed
     }
     
     // Load the initial affirmation from the API
     async loadInitialAffirmation() {
         try {
-            // For now, use a static placeholder until the API is implemented
-            // this.currentAffirmation = await this.fetchAffirmation();
-            
-            // Array of initial affirmations to choose from
-            const initialAffirmations = [
-                "You are enough exactly as you are, embracing both your strengths and your beautiful imperfections.",
-                "Within you resides a strength that has carried you through every challenge so far.",
-                "Your presence in this world makes a difference, even in ways you cannot see.",
-                "Today is a new canvas waiting for you to paint it with possibility."
-            ];
-            
-            // Select a random initial affirmation
-            this.currentAffirmation = initialAffirmations[Math.floor(Math.random() * initialAffirmations.length)];
+            if (this.API_ENABLED) {
+                // Use the API to get an affirmation
+                this.currentAffirmation = await this.fetchAffirmation();
+            } else {
+                // Array of initial affirmations to choose from
+                const initialAffirmations = [
+                    "You are enough exactly as you are, embracing both your strengths and your beautiful imperfections.",
+                    "Within you resides a strength that has carried you through every challenge so far.",
+                    "Your presence in this world makes a difference, even in ways you cannot see.",
+                    "Today is a new canvas waiting for you to paint it with possibility."
+                ];
+                
+                // Select a random initial affirmation
+                this.currentAffirmation = initialAffirmations[Math.floor(Math.random() * initialAffirmations.length)];
+            }
             
             // Setup is complete
             this.isReady = true;
@@ -57,34 +62,40 @@ class AffirmationManager {
     async requestNextAffirmation() {
         console.log("Requesting next affirmation, current is:", this.currentAffirmation);
         try {
-            // For now, use static placeholders until the API is implemented
-            const affirmations = [
-                "Each breath is a reminder that you are alive and filled with possibility.",
-                "Trust your journey, even when the path ahead seems unclear.",
-                "Your courage grows stronger each time you face your fears.",
-                "The light within you illuminates the world in ways you may never fully see.",
-                "You are not defined by your mistakes, but by how you learn from them.",
-                "In the quiet moments, remember that stillness is also a form of progress.",
-                "Your resilience is a testament to your spirit's unwavering strength.",
-                "Every challenge you face is an opportunity for growth and transformation.",
-                "The kindness you show others creates ripples that extend far beyond your sight.",
-                "Your uniqueness is not just acceptable, it is essential to the world.",
-                "Peace begins with the compassion you show yourself.",
-                "There is wisdom in your heart that transcends rational thought.",
-                "Your vulnerability is not weakness, but a profound form of courage.",
-                "Each small step forward is still movement in the right direction.",
-                "You carry within you the power to begin again, no matter what came before."
-            ];
-            
-            // Make sure we don't select the same affirmation as the current one
-            let filteredAffirmations = affirmations.filter(a => a !== this.currentAffirmation);
-            
-            // If somehow all affirmations were filtered out, use the original list
-            if (filteredAffirmations.length === 0) {
-                filteredAffirmations = affirmations;
+            if (this.API_ENABLED) {
+                // Use the API to get a related affirmation
+                this.nextAffirmation = await this.fetchRelatedAffirmation(this.currentAffirmation);
+            } else {
+                // For now, use static placeholders until the API is implemented
+                const affirmations = [
+                    "Each breath is a reminder that you are alive and filled with possibility.",
+                    "Trust your journey, even when the path ahead seems unclear.",
+                    "Your courage grows stronger each time you face your fears.",
+                    "The light within you illuminates the world in ways you may never fully see.",
+                    "You are not defined by your mistakes, but by how you learn from them.",
+                    "In the quiet moments, remember that stillness is also a form of progress.",
+                    "Your resilience is a testament to your spirit's unwavering strength.",
+                    "Every challenge you face is an opportunity for growth and transformation.",
+                    "The kindness you show others creates ripples that extend far beyond your sight.",
+                    "Your uniqueness is not just acceptable, it is essential to the world.",
+                    "Peace begins with the compassion you show yourself.",
+                    "There is wisdom in your heart that transcends rational thought.",
+                    "Your vulnerability is not weakness, but a profound form of courage.",
+                    "Each small step forward is still movement in the right direction.",
+                    "You carry within you the power to begin again, no matter what came before."
+                ];
+                
+                // Make sure we don't select the same affirmation as the current one
+                let filteredAffirmations = affirmations.filter(a => a !== this.currentAffirmation);
+                
+                // If somehow all affirmations were filtered out, use the original list
+                if (filteredAffirmations.length === 0) {
+                    filteredAffirmations = affirmations;
+                }
+                
+                this.nextAffirmation = filteredAffirmations[Math.floor(Math.random() * filteredAffirmations.length)];
             }
             
-            this.nextAffirmation = filteredAffirmations[Math.floor(Math.random() * filteredAffirmations.length)];
             console.log("Selected next affirmation:", this.nextAffirmation);
             
             return this.nextAffirmation;
@@ -565,10 +576,51 @@ class AffirmationManager {
     
     // Placeholder methods for future API implementation
     async fetchAffirmation() {
-        return "Peace begins with the compassion you show yourself.";
+        try {
+            // Use the configured API URL
+            const response = await fetch(`${this.API_URL}/api/affirmation`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch affirmation');
+            }
+            
+            const data = await response.json();
+            return data.affirmation;
+        } catch (error) {
+            console.error('Error fetching affirmation:', error);
+            // Fallback to a static affirmation
+            return "Peace begins with the compassion you show yourself.";
+        }
     }
     
     async fetchRelatedAffirmation(currentAffirmation) {
-        return "You carry within you the power to begin again, no matter what came before.";
+        try {
+            // Use the configured API URL
+            const response = await fetch(`${this.API_URL}/api/related-affirmation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ previousAffirmation: currentAffirmation })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch related affirmation');
+            }
+            
+            const data = await response.json();
+            return data.affirmation;
+        } catch (error) {
+            console.error('Error fetching related affirmation:', error);
+            // Fallback to a static affirmation
+            return "You carry within you the power to begin again, no matter what came before.";
+        }
+    }
+    
+    // Call this method to enable API usage with the deployed worker URL
+    enableAPI(apiUrl) {
+        this.API_URL = apiUrl;
+        this.API_ENABLED = true;
+        console.log('API enabled with URL:', apiUrl);
     }
 } 

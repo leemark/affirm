@@ -13,6 +13,11 @@ let mouseDownTime = 0; // Track how long mouse has been pressed
 let mouseHoldDuration = 0; // Duration mouse has been held down
 let lastMouseX = 0, lastMouseY = 0; // Track previous mouse position for velocity
 
+// API Configuration
+// To enable the API after deploying the Cloudflare Worker:
+// 1. Uncomment the line below and replace with your worker URL
+const API_URL = 'https://affirm-api.leemark.workers.dev';
+
 // P5.js setup function - runs once at the beginning
 function setup() {
     // Create canvas that fills the container
@@ -22,6 +27,9 @@ function setup() {
 
     // Initialize affirmation manager
     affirmationManager = new AffirmationManager();
+    
+    // To connect to the deployed API, uncomment the following line:
+    if (typeof API_URL !== 'undefined') affirmationManager.enableAPI(API_URL);
     
     // Load initial affirmation
     affirmationManager.loadInitialAffirmation().then(() => {

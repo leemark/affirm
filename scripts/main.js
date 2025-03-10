@@ -9,7 +9,7 @@ let lastStateChange = 0; // Track when we last changed states
 let debugMode = true; // Enable for console logs
 let isMousePressed = false; // Track if mouse is pressed
 let lastEmitTime = 0; // Track last time particles were emitted
-let emitInterval = 10; // Minimum interval between particle emissions (ms)
+let emitInterval = 5; // Minimum interval between particle emissions (ms) - reduced from 10ms to 5ms
 let mouseDownTime = 0; // Track how long mouse has been pressed
 let mouseHoldDuration = 0; // Duration mouse has been held down
 let lastMouseX = 0, lastMouseY = 0; // Track previous mouse position for velocity
@@ -283,49 +283,63 @@ function draw() {
             break;
     }
     
-    // Emit particles when mouse is pressed
-    if (isMousePressed && affirmationManager && millis() - lastEmitTime > emitInterval) {
-        // Calculate mouse movement speed
-        const dx = mouseX - lastMouseX;
-        const dy = mouseY - lastMouseY;
-        const speed = sqrt(dx*dx + dy*dy);
-        
-        // Update mouseHoldDuration
+    // Track mouse position for particle effects
+    const dx = mouseX - lastMouseX;
+    const dy = mouseY - lastMouseY;
+    const speed = sqrt(dx*dx + dy*dy);
+    
+    // Update mouseHoldDuration if mouse is pressed
+    if (isMousePressed) {
         mouseHoldDuration = millis() - mouseDownTime;
-        
-        // Determine particle count based on speed and hold time
-        let particleCount;
-        if (speed > 10) {
-            // More particles for faster movement
-            particleCount = floor(map(speed, 10, 50, 2, 8, true));
-        } else {
-            // Standard amount for slow/no movement
-            particleCount = floor(random(2, 4));
-        }
-        
-        // Create a color that changes based on position and hold duration
-        // Use hue based on mouse X position (0-360)
+    }
+    
+    // Always emit particles from cursor position if we're past minimum interval
+    if (affirmationManager && millis() - lastEmitTime > emitInterval) {
+        // Create a color that changes based on position
+        colorMode(HSB, 360, 100, 100);
         const hue = map(mouseX, 0, width, 180, 360) % 360;
         // Saturation based on mouse Y position (50-100%)
         const saturation = map(mouseY, 0, height, 50, 100);
-        // Brightness based on hold duration (70-100%)
-        const brightness = map(min(mouseHoldDuration, 2000), 0, 2000, 70, 100);
+        // Base brightness
+        let brightness = 70;
+        
+        // Determine particle count based on whether mouse is pressed
+        let particleCount;
+        
+        if (isMousePressed) {
+            // More particles when mouse is pressed
+            if (speed > 10) {
+                // More particles for faster movement
+                particleCount = floor(map(speed, 10, 50, 2, 8, true));
+            } else {
+                // Standard amount for slow/no movement when pressed
+                particleCount = floor(random(2, 4));
+            }
+            
+            // Increase brightness based on hold duration when pressed
+            brightness = map(min(mouseHoldDuration, 2000), 0, 2000, 70, 100);
+        } else {
+            // Fewer particles when mouse is not pressed - continuous gentle emission
+            particleCount = speed > 5 ? floor(random(1, 2)) : floor(random(0, 1));
+        }
         
         // Convert HSB to RGB for our particle system
-        colorMode(HSB, 360, 100, 100);
         const c = color(hue, saturation, brightness);
         colorMode(RGB, 255); // Switch back to RGB
         
         const cursorColor = [red(c), green(c), blue(c)];
         
         // Emit particles from mouse cursor
-        affirmationManager.emitParticlesFromCursor(mouseX, mouseY, particleCount, cursorColor);
-        lastEmitTime = millis();
+        if (particleCount > 0) {
+            affirmationManager.emitParticlesFromCursor(mouseX, mouseY, particleCount, cursorColor);
+        }
         
-        // Update last mouse position
-        lastMouseX = mouseX;
-        lastMouseY = mouseY;
+        lastEmitTime = millis();
     }
+    
+    // Update last mouse position
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
 }
 
 // Handle window resize

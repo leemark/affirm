@@ -2,7 +2,7 @@
 let canvas;
 let affirmationManager;
 let currentState = 'initializing'; // 'initializing', 'displaying', 'transitioning', 'creating'
-let displayDuration = 6000; // how long to display text before transition (ms)
+let displayDuration = 15000; // how long to display text before transition (ms) - increased to 15 seconds
 let displayStartTime = 0;
 let lastStateChange = 0; // Track when we last changed states
 let debugMode = true; // Enable for console logs
@@ -12,6 +12,9 @@ let emitInterval = 10; // Minimum interval between particle emissions (ms)
 let mouseDownTime = 0; // Track how long mouse has been pressed
 let mouseHoldDuration = 0; // Duration mouse has been held down
 let lastMouseX = 0, lastMouseY = 0; // Track previous mouse position for velocity
+let requestInProgress = false; // Track when an API request is in progress
+let lastApiRequestTime = 0; // Track when the last API request was made
+const MIN_API_INTERVAL = 15000; // Minimum time between API requests (15 seconds)
 
 // API Configuration
 // To enable the API after deploying the Cloudflare Worker:
@@ -31,8 +34,14 @@ function setup() {
     // To connect to the deployed API, uncomment the following line:
     if (typeof API_URL !== 'undefined') affirmationManager.enableAPI(API_URL);
     
+    // Initialize timing variables
+    lastApiRequestTime = millis() - MIN_API_INTERVAL; // Allow first API request immediately
+    
     // Load initial affirmation
     affirmationManager.loadInitialAffirmation().then(() => {
+        // Update last API request time after loading initial affirmation
+        lastApiRequestTime = millis();
+        
         // Initialize the first set of characters with fade-in animation
         affirmationManager.initializeCharacters();
         
@@ -60,6 +69,7 @@ function changeState(newState) {
     
     if (newState === 'displaying') {
         displayStartTime = millis();
+        requestInProgress = false; // Reset flag when entering displaying state
     }
 }
 
@@ -78,15 +88,41 @@ function draw() {
             affirmationManager.updateAndDisplayCharacters();
             
             // Check if it's time to transition to a new affirmation
-            if (millis() - displayStartTime > displayDuration && 
+            if (!requestInProgress && 
+                millis() - displayStartTime > displayDuration && 
                 affirmationManager.isFadeInComplete()) {
+                
+                // Enforce minimum time between API requests
+                const currentTime = millis();
+                if (currentTime - lastApiRequestTime < MIN_API_INTERVAL) {
+                    // Not enough time has passed since the last API request
+                    if (debugMode) console.log(`Waiting for minimum API interval (${Math.floor((MIN_API_INTERVAL - (currentTime - lastApiRequestTime)) / 1000)}s remaining)`);
+                    return;
+                }
+                
+                // Set flag to prevent multiple requests
+                requestInProgress = true;
+                lastApiRequestTime = currentTime;
+                
+                if (debugMode) console.log("Requesting next affirmation (API call)");
                 
                 // Request the next affirmation and start transition
                 affirmationManager.requestNextAffirmation().then(() => {
                     // Start fading out current characters
                     affirmationManager.prepareForTransition();
                     changeState('transitioning');
+                }).catch(error => {
+                    console.error("Error requesting next affirmation:", error);
+                    requestInProgress = false; // Reset flag on error
                 });
+                
+                // Safety timeout to reset the flag in case of unexpected issues
+                setTimeout(() => {
+                    if (requestInProgress && currentState === 'displaying') {
+                        console.warn("Safety timeout: resetting requestInProgress flag");
+                        requestInProgress = false;
+                    }
+                }, 5000); // 5 second timeout
             }
             break;
             

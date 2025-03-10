@@ -29,12 +29,13 @@ async function generateAffirmation(apiKey) {
     
     // Get the generative model (Gemini)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash-lite',
       generationConfig: {
-        temperature: 0.7,
+        temperature: 1.15,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 100,
+        maxOutputTokens: 8192,
+        responseMimeType: "text/plain",
       },
     });
 
@@ -69,12 +70,13 @@ async function generateRelatedAffirmation(previousAffirmation, apiKey) {
     
     // Get the generative model (Gemini)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash-lite',
       generationConfig: {
-        temperature: 0.7,
+        temperature: 1.15,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 100,
+        maxOutputTokens: 8192,
+        responseMimeType: "text/plain",
       },
     });
 

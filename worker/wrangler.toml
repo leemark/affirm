@@ -1,6 +1,7 @@
 name = "affirm-api"
 main = "index.js"
 compatibility_date = "2023-10-02"
+compatibility_flags = ["nodejs_compat"]
 
 # Specify the account ID (replace with your account ID)
 account_id = "9098bac5e73248e51e75892b33f0b9c0"

@@ -40,12 +40,14 @@ async function generateAffirmation(apiKey) {
     });
 
     // Construct prompt
-    const prompt = `Generate a single, brief positive affirmation that is uplifting and encouraging.
-                    The affirmation should be a single sentence, no more than 15 words.
+    const prompt = `Generate a single, profound piece of wisdom that sounds like advice from an enlightened spiritual guru or zen master.
+                    The wisdom should be a single sentence, no more than 15 words.
                     It should be written in second person (using "you").
+                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
+                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
-                    Just return the affirmation text itself.`;
+                    Just return the wisdom text itself.`;
 
     // Generate content
     const result = await model.generateContent(prompt);
@@ -81,14 +83,18 @@ async function generateRelatedAffirmation(previousAffirmation, apiKey) {
     });
 
     // Construct prompt with previous affirmation
-    const prompt = `The following is a positive affirmation: "${previousAffirmation}"
+    const prompt = `The following is a piece of wisdom: "${previousAffirmation}"
                     
-                    Generate a new, different positive affirmation that is thematically related to the one above.
-                    The new affirmation should be a single sentence, no more than 15 words.
+                    Generate a new, different piece of profound wisdom that is thematically related to the one above,
+                    but takes the insight deeper or illuminates a different aspect of the same truth.
+                    The wisdom should sound like advice from an enlightened spiritual guru or zen master.
+                    It should be a single sentence, no more than 15 words.
                     It should be written in second person (using "you").
+                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
+                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
-                    Just return the affirmation text itself.`;
+                    Just return the wisdom text itself.`;
 
     // Generate content
     const result = await model.generateContent(prompt);
@@ -126,13 +132,16 @@ async function generateEmotionBasedAffirmation(emotion, apiKey) {
     // Construct prompt with emotion context
     const prompt = `The user has indicated they are feeling ${emotion}.
                     
-                    Generate a single, uplifting positive affirmation that acknowledges this emotion
-                    and offers encouragement appropriate for someone feeling ${emotion}.
-                    The affirmation should be a single sentence, no more than 15 words.
+                    Generate a single piece of profound wisdom that acknowledges this emotional state
+                    and offers enlightened guidance appropriate for someone feeling ${emotion}.
+                    The wisdom should sound like advice from an enlightened spiritual guru or zen master.
+                    It should be a single sentence, no more than 15 words.
                     It should be written in second person (using "you").
+                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
+                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
-                    Just return the affirmation text itself.`;
+                    Just return the wisdom text itself.`;
 
     // Generate content
     const result = await model.generateContent(prompt);
@@ -168,17 +177,20 @@ async function generateChoiceBasedAffirmation(previousAffirmation, choice, apiKe
     });
 
     // Construct prompt with choice context
-    const prompt = `Previous affirmation: "${previousAffirmation}"
+    const prompt = `Previous wisdom: "${previousAffirmation}"
                     
                     The user has chosen to explore the concept of "${choice}".
                     
-                    Generate a new, different positive affirmation that builds on the previous one
+                    Generate a new piece of profound wisdom that builds on the previous one
                     but focuses specifically on the concept of ${choice}.
-                    The new affirmation should be a single sentence, no more than 15 words.
+                    The wisdom should sound like advice from an enlightened spiritual guru or zen master.
+                    It should be a single sentence, no more than 15 words.
                     It should be written in second person (using "you").
+                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
+                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
-                    Just return the affirmation text itself.`;
+                    Just return the wisdom text itself.`;
 
     // Generate content
     const result = await model.generateContent(prompt);
@@ -229,22 +241,21 @@ async function generateInteractiveElements(previousAffirmation, userPath, apiKey
     // Construct prompt for interactive elements
     const prompt = `${pathContext}
                     
-                    Based on this context, generate a thoughtful question that invites the user to explore their next direction,
+                    Based on this context, generate a very brief question (just 2-4 words) that prompts the user to choose their next direction,
                     along with two possible response options that feel meaningful and different from each other.
                     
                     Format your response as a JSON object with these fields:
-                    - question: A thoughtful question asking what direction the user wants to explore next
+                    - question: A very brief 2-4 word prompt (e.g., "Choose your path" or "Inner journey?")
                     - optionA: Label for the first choice button (2-5 words)
                     - optionAId: A single word identifier for the first choice
                     - optionB: Label for the second choice button (2-5 words)
                     - optionBId: A single word identifier for the second choice
                     
-                    Make the question and options feel conversational, warm, and reflective.
-                    The options should provide meaningfully different paths forward.
+                    The options should provide meaningfully different paths of spiritual or philosophical exploration.
                     Each option ID should be a single word that captures the essence of that path.
                     
                     Example format:
-                    {"question": "What aspect of yourself would you like to nurture right now?", "optionA": "Inner strength", "optionAId": "strength", "optionB": "Self-compassion", "optionBId": "compassion"}`;
+                    {"question": "Your path?", "optionA": "Inner strength", "optionAId": "strength", "optionB": "Deep acceptance", "optionBId": "acceptance"}`;
 
     // Generate content
     const result = await model.generateContent(prompt);
@@ -259,22 +270,22 @@ async function generateInteractiveElements(previousAffirmation, userPath, apiKey
       } else {
         // Fallback options if JSON parsing fails
         return {
-          question: "Which path would you like to explore next?",
-          optionA: "Inner strength",
-          optionAId: "strength",
-          optionB: "Self-compassion", 
-          optionBId: "compassion"
+          question: "Your path?",
+          optionA: "Inner wisdom",
+          optionAId: "wisdom",
+          optionB: "Soul growth", 
+          optionBId: "growth"
         };
       }
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
       // Fallback options if JSON parsing fails
       return {
-        question: "Which path would you like to explore next?",
-        optionA: "Inner strength",
-        optionAId: "strength",
-        optionB: "Self-compassion", 
-        optionBId: "compassion"
+        question: "Next journey?",
+        optionA: "Inner wisdom",
+        optionAId: "wisdom",
+        optionB: "Soul growth", 
+        optionBId: "growth"
       };
     }
   } catch (error) {

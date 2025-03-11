@@ -2,7 +2,7 @@
 let canvas;
 let affirmationManager;
 let interactiveUI;
-let currentState = 'emotion_selection'; // 'emotion_selection', 'initializing', 'displaying', 'transitioning', 'creating', 'choice_selection'
+let currentState = 'emotion_selection'; // 'emotion_selection', 'initializing', 'displaying', 'transitioning', 'creating', 'choice_selection', 'pre_choice_transition'
 let displayDuration = 15000; // how long to display text before transition (ms) - increased to 15 seconds
 let displayStartTime = 0;
 let lastStateChange = 0; // Track when we last changed states
@@ -198,6 +198,10 @@ function changeState(newState) {
         case 'choice_selection':
             // No specific actions needed 
             break;
+            
+        case 'pre_choice_transition':
+            // No specific actions needed
+            break;
     }
 }
 
@@ -226,11 +230,11 @@ function draw() {
                 
                 // Increment affirmation count and check if it's time to show choices
                 if (interactiveUI.incrementAffirmationCount()) {
-                    if (debugMode) console.log("Time to show choices");
+                    if (debugMode) console.log("Time to prepare for choices");
                     
-                    // Show choice selection UI
-                    changeState('choice_selection');
-                    showChoiceSelectionUI();
+                    // Start fading out current characters but don't show choices yet
+                    affirmationManager.prepareForTransition();
+                    changeState('pre_choice_transition');
                     return;
                 }
                 
@@ -265,6 +269,25 @@ function draw() {
                         requestInProgress = false;
                     }
                 }, 5000); // 5 second timeout
+            }
+            break;
+            
+        case 'pre_choice_transition':
+            // Display characters that are fading out
+            affirmationManager.updateAndDisplayCharacters();
+            
+            // When all characters have completely faded out, show the choice selection
+            if (affirmationManager.isFadeOutComplete()) {
+                if (debugMode) console.log("Faded out completely, now showing choices");
+                changeState('choice_selection');
+                showChoiceSelectionUI();
+            }
+            
+            // Safety timeout - if we've been in this state too long, force next state
+            if (millis() - lastStateChange > 5000) {
+                if (debugMode) console.log("Safety timeout in pre_choice_transition state");
+                changeState('choice_selection');
+                showChoiceSelectionUI();
             }
             break;
             

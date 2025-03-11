@@ -247,9 +247,19 @@ class InteractiveUI {
      * @param {string} choiceId - Selected choice ID
      */
     onChoiceSelected(choiceId) {
-        this.choiceHistory.push(choiceId);
+        // Immediately hide the UI with a faster transition
+        this.container.style.transition = 'opacity 0.15s ease, visibility 0.15s ease';
         this.hideUI();
         
+        // Reset transition timing after a brief delay
+        setTimeout(() => {
+            this.container.style.transition = 'opacity 0.3s ease, visibility 0.3s ease';
+        }, 200);
+        
+        // Add the choice to history
+        this.choiceHistory.push(choiceId);
+        
+        // Execute the callback
         if (this.choiceCallback) {
             this.choiceCallback(choiceId);
         }
@@ -260,10 +270,12 @@ class InteractiveUI {
      */
     hideUI() {
         this.container.classList.remove('active');
-        // Clear the container content to prevent brief visibility during transitions
+        
+        // Clear the container content more quickly when transitioning from choice to wisdom
+        // Use a shorter timeout for better synchronization with the faster transition
         setTimeout(() => {
             this.container.innerHTML = '';
-        }, 300); // Short delay to allow CSS transition to complete
+        }, 150); // Shorter delay aligned with the faster transition
     }
     
     /**

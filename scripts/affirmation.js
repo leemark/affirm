@@ -169,7 +169,7 @@ class AffirmationManager {
             try {
                 if (textWidth(testLine) <= this.maxWidth) {
                     currentLine = testLine;
-            } else {
+                } else {
                     lines.push(currentLine);
                     currentLine = word;
                 }
@@ -218,7 +218,7 @@ class AffirmationManager {
                 
                 try {
                     // Skip spaces (we don't animate them)
-                if (char !== ' ') {
+                    if (char !== ' ') {
                         const lineWidth = textWidth(lines[i]);
                         const lineX = this.textX - lineWidth / 2;
                         const charWidth = textWidth(char);
@@ -390,27 +390,30 @@ class AffirmationManager {
     
     // Create new characters for the next affirmation
     createNewCharacters() {
-        console.log("Creating new characters for: ", this.nextAffirmation);
+        if (debugMode) console.log("Creating new characters for: ", this.nextAffirmation);
         
         // If nextAffirmation is empty, something went wrong
         if (!this.nextAffirmation || this.nextAffirmation.trim() === '') {
-            console.error("Error: Next affirmation is empty!");
-            this.nextAffirmation = "Each small step forward is still movement in the right direction.";
+            console.error("Error: Next affirmation is empty! Using default wisdom.");
+            this.nextAffirmation = "The journey of a thousand miles begins beneath one's feet.";
         }
         
         // Make sure we're using p5.js functions within draw context
         push(); // Save the current drawing state
         
+        // Update current affirmation to the next one
+        this.currentAffirmation = this.nextAffirmation;
+        
         // Calculate text size for new text
         textSize(this.fontSize);
-        const calculatedTextWidth = this.calculateTextWidth(this.nextAffirmation);
+        const calculatedTextWidth = this.calculateTextWidth(this.currentAffirmation);
         if (calculatedTextWidth > this.maxWidth) {
             this.fontSize = floor(this.fontSize * (this.maxWidth / calculatedTextWidth));
             textSize(this.fontSize);
         }
         
         // Create new characters
-        const lines = this.breakTextIntoLines(this.nextAffirmation);
+        const lines = this.breakTextIntoLines(this.currentAffirmation);
         const newCharacters = [];
         let charIndex = 0;
         let totalChars = 0;
@@ -480,7 +483,6 @@ class AffirmationManager {
         
         // Update characters array with new characters
         this.characters = newCharacters;
-        this.currentAffirmation = this.nextAffirmation;
         this.nextAffirmation = '';
         
         console.log("Created", newCharacters.length, "characters");
@@ -526,8 +528,8 @@ class AffirmationManager {
             }
             
             // Reinitialize with the current affirmation to update positions
-        this.initializeTextSize();
-        
+            this.initializeTextSize();
+            
             // Create new character array with updated positions
             const lines = this.breakTextIntoLines(this.currentAffirmation);
             const newCharacters = [];

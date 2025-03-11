@@ -95,10 +95,8 @@ async function showChoiceSelectionUI() {
             // Reset the affirmation counter
             interactiveUI.resetAffirmationCount();
             
-            // Start transition to the next affirmation
-            changeState('transitioning');
-            
-            // Request the next affirmation based on the selected choice
+            // Hide the UI immediately but don't change state yet
+            // First request the next affirmation to avoid showing a placeholder
             requestNextAffirmationWithChoice(choice);
         });
     } catch (error) {
@@ -115,10 +113,8 @@ async function showChoiceSelectionUI() {
             // Reset the affirmation counter
             interactiveUI.resetAffirmationCount();
             
-            // Start transition to the next affirmation
-            changeState('transitioning');
-            
-            // Request the next affirmation based on the selected choice
+            // Hide the UI immediately but don't change state yet
+            // First request the next affirmation to avoid showing a placeholder
             requestNextAffirmationWithChoice(choice);
         });
     }
@@ -149,12 +145,21 @@ function requestNextAffirmationWithChoice(choice) {
     
     // Request the next affirmation with choice
     affirmationManager.requestNextAffirmationWithChoice(choice).then(() => {
+        // Only start the transition after we have the next affirmation
+        if (debugMode) console.log("Received next affirmation, now starting transition");
+        
+        // Now change the state to transitioning and prepare for fade-out
+        changeState('transitioning');
+        
         // Start fading out current characters
         affirmationManager.prepareForTransition();
-        changeState('transitioning');
     }).catch(error => {
         console.error("Error requesting next affirmation:", error);
         requestInProgress = false;
+        
+        // Even on error, we need to proceed with transition
+        changeState('transitioning');
+        affirmationManager.prepareForTransition();
     });
 }
 

@@ -40,11 +40,21 @@ async function generateAffirmation(apiKey) {
     });
 
     // Construct prompt
-    const prompt = `Generate a single, profound piece of wisdom that sounds like advice from an enlightened spiritual guru or zen master.
-                    The wisdom should be a single sentence, no more than 15 words.
+    const prompt = `Generate a single, profound piece of wisdom that blends these philosophical styles:
+                    1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
+                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
+                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    
+                    The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
-                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
-                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
+                    Make it deep, insightful, and timeless.
+                    For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
+                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
+                    For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
+                    For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
+                    
+                    Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
                     Just return the wisdom text itself.`;
@@ -87,11 +97,22 @@ async function generateRelatedAffirmation(previousAffirmation, apiKey) {
                     
                     Generate a new, different piece of profound wisdom that is thematically related to the one above,
                     but takes the insight deeper or illuminates a different aspect of the same truth.
-                    The wisdom should sound like advice from an enlightened spiritual guru or zen master.
-                    It should be a single sentence, no more than 15 words.
+                    
+                    Blend these philosophical styles:
+                    1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
+                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
+                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    
+                    The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
-                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
-                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
+                    Make it deep, insightful, and timeless.
+                    For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
+                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
+                    For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
+                    For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
+                    
+                    Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
                     Just return the wisdom text itself.`;
@@ -134,11 +155,22 @@ async function generateEmotionBasedAffirmation(emotion, apiKey) {
                     
                     Generate a single piece of profound wisdom that acknowledges this emotional state
                     and offers enlightened guidance appropriate for someone feeling ${emotion}.
-                    The wisdom should sound like advice from an enlightened spiritual guru or zen master.
-                    It should be a single sentence, no more than 15 words.
+                    
+                    Blend these philosophical styles:
+                    1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
+                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
+                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    
+                    The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
-                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
-                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
+                    Make it deep, insightful, and timeless.
+                    For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
+                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
+                    For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
+                    For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
+                    
+                    Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
                     Just return the wisdom text itself.`;
@@ -183,11 +215,22 @@ async function generateChoiceBasedAffirmation(previousAffirmation, choice, apiKe
                     
                     Generate a new piece of profound wisdom that builds on the previous one
                     but focuses specifically on the concept of ${choice}.
-                    The wisdom should sound like advice from an enlightened spiritual guru or zen master.
-                    It should be a single sentence, no more than 15 words.
+                    
+                    Blend these philosophical styles:
+                    1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
+                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
+                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    
+                    The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
-                    Make it deep, insightful, and timeless - like ancient wisdom passed down through generations.
-                    The tone should be calm, clear, and illuminating - as if revealing a profound truth about life.
+                    Make it deep, insightful, and timeless.
+                    For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
+                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
+                    For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
+                    For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
+                    
+                    Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
                     Just return the wisdom text itself.`;

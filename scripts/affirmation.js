@@ -596,7 +596,7 @@ class AffirmationManager {
         } catch (error) {
             console.error('Error fetching affirmation:', error);
             // Fallback to a static affirmation
-            return "Peace begins with the compassion you show yourself.";
+            return "Peace begins not with the world around you, but with the world within you, yes.";
         }
     }
     
@@ -620,7 +620,7 @@ class AffirmationManager {
         } catch (error) {
             console.error('Error fetching related affirmation:', error);
             // Fallback to a static affirmation
-            return "You carry within you the power to begin again, no matter what came before.";
+            return "For out of the ashes of what was, risen you have; your thoughts, your future they shape.";
         }
     }
     
@@ -689,42 +689,49 @@ class AffirmationManager {
     getHardcodedEmotionAffirmation(emotion) {
         const emotionAffirmations = {
             anxious: [
-                "Your anxiety does not define you; it's just weather passing through your mind.",
-                "In this moment, you are safe and doing the best you can.",
-                "Each breath you take is an anchor to the present, away from anxious thoughts."
+                "Not all who wander in the mind are lost; temporary, your anxiety is.",
+                "Between what you fear and what truly is, a vast distance there often remains.",
+                "Like shadows that flee at dawn, anxious thoughts flee when faced with your light.",
+                "For in your darkest thoughts, a ring of truth you may find, but its power over you is yours to command."
             ],
             hopeful: [
-                "The light of possibility shines brightly when you keep hope in your heart.",
-                "Your optimism is planting seeds for beautiful tomorrows.",
-                "Hope lives within you, illuminating paths that fear tries to darken."
+                "Even the smallest hope can change the course of the future, yes.",
+                "Like a tree with roots deep and strong, hope in your heart grows through winter's harshest days.",
+                "The road that winds ahead may seem long, but walk it with hope you must.",
+                "For hope is the eagle that soars above the mountain of your present circumstances."
             ],
             tired: [
-                "Rest is not a luxury but essential nourishment for your extraordinary spirit.",
-                "Your worth is not measured by your productivity but by your presence.",
-                "Even in fatigue, your strength remains; it's just resting, not gone."
+                "Rest you must, for a warrior's strength renewed is through stillness, not constant battle.",
+                "Even the mightiest river begins as a stream that knows when to rest in still pools.",
+                "Your weariness is but the echo of battles fought well; honor it as you would honor a faithful companion.",
+                "The garden of your energy requires seasons of rest to bloom most beautifully."
             ],
             sad: [
-                "Your sadness is evidence of your capacity to deeply feel and care.",
-                "This heaviness will lift; your heart knows the way back to lightness.",
-                "Your tears water the garden of compassion within you."
+                "Through the valley of sorrow must you walk to climb the mountain of joy that awaits.",
+                "Your tears are rivers carving canyons of wisdom in the landscape of your soul.",
+                "Grieve you may, grieve you should, but consumed by grief, become not.",
+                "For joy and sorrow are inseparable; together they come, and when one sits alone with you, remember that the other is asleep upon your bed."
             ],
             calm: [
-                "The tranquility you feel is your natural state, always waiting beneath the noise.",
-                "Your peaceful center remains unchanged despite the world's chaos.",
-                "The serenity within you is a gift you can return to anytime."
+                "In the quiet spaces between thoughts, greatest power you will find.",
+                "Like the eye of a storm, your calm center remains unmoved while winds of chaos howl.",
+                "Your tranquility is not the absence of darkness, but the presence of inner light, ever burning.",
+                "For the stillness you feel now is but the echo of ancient mountains within your spirit."
             ],
             overwhelmed: [
-                "You need only focus on the next small step, not the entire mountain.",
-                "Breaking down what overwhelms you transforms mountains into manageable hills.",
-                "Your capacity to navigate complexity is greater than you realize."
+                "One step only must you see; break down the mountain, you will.",
+                "Even the greatest of journeys begins with but a single forward glance.",
+                "Focus on what you can control, accept what you cannot - this is the wisdom of ages.",
+                "For when the task seems too great, remember that you are greater still, forged in trials of old."
             ]
         };
         
         // Get affirmations for the selected emotion, or use default if not found
         const affirmations = emotionAffirmations[emotion] || [
-            "Your resilience through challenges reveals the depth of your strength.",
-            "Every experience is shaping you into the person you're meant to become.",
-            "The power to create positive change exists within you right now."
+            "Tested you have been, proven yourself you have; recognize your strength, you must.",
+            "The road goes ever on, but within you lies the courage for each new turning.",
+            "Your thoughts shape the world you perceive; change your thoughts and the world transforms with them.",
+            "For you are not merely the drop in the ocean, but the ocean in a drop."
         ];
         
         // Select a random affirmation from the array
@@ -736,68 +743,79 @@ class AffirmationManager {
         const choiceAffirmations = {
             // Strength-focused choices
             strength: [
-                "The reservoir of strength within you is deeper than any challenge you face.",
-                "Your resilience has been forged through every difficulty you've already overcome.",
-                "You possess the power to transform obstacles into stepping stones."
+                "Like mithril forged in the depths, your strength grows more precious with each test.",
+                "Strong you are, when acknowledge your weakness, you do.",
+                "Your power lies not in never falling, but in rising each time you fall with newfound wisdom.",
+                "The oak that bends in the storm outlives the rigid pine; flexibility in strength, your greatest asset is."
             ],
             inner_strength: [
-                "The quiet voice of courage within you speaks louder than any doubt.",
-                "Your inner strength grows each time you choose to persevere.",
-                "The wisdom of your heart guides you through uncertainty with grace."
+                "Deep in the silent forest of your heart, ancient strength awaits its awakening.",
+                "Judge yourself by your size, do not. In spirit, boundless you are.",
+                "When the night is darkest, your inner light burns most brightly - this is the paradox of courage.",
+                "For your thoughts are the seeds from which your strength grows; tend them with care."
             ],
             overcome_challenges: [
-                "Each challenge you face is an invitation to discover new capabilities.",
-                "You have weathered storms before and emerged stronger on the other side.",
-                "Your ability to adapt and overcome reveals your extraordinary nature."
+                "Not the absence of obstacles, but the presence of determination defines your path.",
+                "Impossible, nothing is, when persistence becomes your weapon.",
+                "The greatest adventure is not conquering mountains, but conquering the fears that would keep you from climbing.",
+                "Your challenges are not punishment, but opportunities dressed in work clothes."
             ],
             
             // Gratitude-focused choices
             gratitude: [
-                "Your appreciation for life's gifts multiplies their presence in your experience.",
-                "Gratitude opens your eyes to abundance that was always there.",
-                "The more you acknowledge life's blessings, the more they expand."
+                "The eyes that see beauty everywhere belong to souls that cultivate gratitude within.",
+                "Gratitude transforms what we have into enough, yes.",
+                "In giving thanks for the rain, we find joy even in storms.",
+                "For what you focus on expands; when gratitude fills your vision, abundance appears."
             ],
             appreciate_present: [
-                "This moment contains everything you need for peace and fulfillment.",
-                "Your presence in the now unlocks life's richest treasures.",
-                "The beauty of this moment unfolds when you give it your full attention."
+                "All we have to decide is what to do with the time that is given us.",
+                "Exist only, the present does. Yesterday and tomorrow, illusions they are.",
+                "The secret of life is to be fully present in the unfolding moment, neither clinging to the past nor grasping for the future.",
+                "Your mind creates stories about what this moment lacks; challenge these stories, and peace you will find."
             ],
             find_joy: [
-                "Your capacity for joy remains undiminished, waiting for your recognition.",
-                "Small moments of delight build a life of extraordinary happiness.",
-                "Your heart knows how to find light even in shadowed places."
+                "Even in the shadow of Mordor, a flower may bloom if one has eyes to see.",
+                "Find joy you must, not because easy it is, but because necessary it is.",
+                "Joy is not the absence of suffering, but the presence of meaning that transcends it.",
+                "When you identify the thoughts that dim your joy, power over them you gain."
             ],
             
             // Peace-focused choices
             inner_peace: [
-                "The sanctuary of peace within you remains untouched by external chaos.",
-                "Your tranquil center is always accessible, just a few breaths away.",
-                "Peace flows naturally when you release what you cannot control."
+                "The noise of the world grows quiet when the peace of your inner sanctuary you enter.",
+                "Peace, a choice it is. Make it at each moment, you can.",
+                "Like the depths of the sea that remain undisturbed by surface storms, your inner peace waits below your thoughts.",
+                "Identify what disturbs your tranquility, and choice returns to you."
             ],
             mindful_presence: [
-                "Your full attention to this moment is the gateway to deeper awareness.",
-                "Mindfulness reveals the extraordinary beauty hidden in ordinary moments.",
-                "Your conscious presence transforms routine actions into sacred ritual."
+                "In the space between breaths, the whole of creation dwells.",
+                "Your mind wanders, natural that is. Notice it, return to now, this is the way.",
+                "Be fully where you are, for that is the only place where life can truly be met.",
+                "For each moment observed with full attention becomes a doorway to eternity."
             ],
             
             // Growth-focused choices
             personal_growth: [
-                "Every step in your evolution reveals new horizons of possibility.",
-                "Your commitment to growth guarantees that your future exceeds your past.",
-                "The path of self-discovery leads to treasures beyond imagination."
+                "Not all those who wander are lost; sometimes, wandering is the path to finding oneself.",
+                "Grow or grow not. There is no try.",
+                "Your becoming is a journey without end, each step revealing new horizons within.",
+                "The beliefs that limit your growth are but shadows; shine light upon them and watch them fade."
             ],
             embrace_change: [
-                "Your willingness to evolve makes you as limitless as the universe itself.",
-                "Embracing change activates the creative force within you.",
-                "Your adaptability is transforming challenges into opportunities for renewal."
+                "Even the smallest person can change the course of the future.",
+                "Fear of change, the path to stagnation is. Embrace it, you must.",
+                "The wind of change polishes the stone of your character until it shines with its true nature.",
+                "When you resist what is happening, you create suffering; accept change as your ally, not your enemy."
             ]
         };
         
         // Get affirmations for the selected choice, or use default if not found
         const affirmations = choiceAffirmations[choice] || [
-            "Your journey continues to unfold with purpose and meaning.",
-            "Each choice you make shapes the beautiful tapestry of your life.",
-            "The next chapter of your story contains wonderful possibilities."
+            "Many paths lie before you; trust in yourself to choose wisely, you must.",
+            "You are the author of your tale; with each choice, a new chapter begins.",
+            "The thought 'I cannot' is rarely the truth, but merely a belief waiting to be challenged.",
+            "For your life is not a burden to be endured, but a mystery to be lived."
         ];
         
         // Select a random affirmation from the array

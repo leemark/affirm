@@ -193,6 +193,96 @@ async function generateChoiceBasedAffirmation(previousAffirmation, choice, apiKe
   }
 }
 
+/**
+ * Generate interactive elements based on user's path
+ */
+async function generateInteractiveElements(previousAffirmation, userPath, apiKey) {
+  try {
+    // Initialize the Google Generative AI with the API key
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // Get the generative model (Gemini)
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        temperature: 0.8,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8192,
+        responseMimeType: "text/plain",
+      },
+    });
+
+    let pathContext = "";
+    if (userPath && userPath.length > 0) {
+      pathContext = `
+      The user's emotional journey began with feeling "${userPath.initialEmotion}".
+      Their path through affirmations has included these choices: ${JSON.stringify(userPath.choices)}.
+      Most recent affirmation: "${previousAffirmation}"
+      `;
+    } else {
+      pathContext = `
+      The user has just received this affirmation: "${previousAffirmation}"
+      `;
+    }
+
+    // Construct prompt for interactive elements
+    const prompt = `${pathContext}
+                    
+                    Based on this context, generate a thoughtful question that invites the user to explore their next direction,
+                    along with two possible response options that feel meaningful and different from each other.
+                    
+                    Format your response as a JSON object with these fields:
+                    - question: A thoughtful question asking what direction the user wants to explore next
+                    - optionA: Label for the first choice button (2-5 words)
+                    - optionAId: A single word identifier for the first choice
+                    - optionB: Label for the second choice button (2-5 words)
+                    - optionBId: A single word identifier for the second choice
+                    
+                    Make the question and options feel conversational, warm, and reflective.
+                    The options should provide meaningfully different paths forward.
+                    Each option ID should be a single word that captures the essence of that path.
+                    
+                    Example format:
+                    {"question": "What aspect of yourself would you like to nurture right now?", "optionA": "Inner strength", "optionAId": "strength", "optionB": "Self-compassion", "optionBId": "compassion"}`;
+
+    // Generate content
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+    
+    try {
+      // Extract JSON from response
+      const jsonMatch = text.match(/\{.*\}/s);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      } else {
+        // Fallback options if JSON parsing fails
+        return {
+          question: "Which path would you like to explore next?",
+          optionA: "Inner strength",
+          optionAId: "strength",
+          optionB: "Self-compassion", 
+          optionBId: "compassion"
+        };
+      }
+    } catch (parseError) {
+      console.error('JSON parsing error:', parseError);
+      // Fallback options if JSON parsing fails
+      return {
+        question: "Which path would you like to explore next?",
+        optionA: "Inner strength",
+        optionAId: "strength",
+        optionB: "Self-compassion", 
+        optionBId: "compassion"
+      };
+    }
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    throw new Error(`Gemini API error: ${error.message || 'Unknown error'}`);
+  }
+}
+
 // Health check endpoint
 app.get('/health', (c) => {
   return c.json({ status: 'ok' });
@@ -294,6 +384,33 @@ app.post('/api/choice-affirmation', async (c) => {
     return c.json({ affirmation });
   } catch (error) {
     console.error('Error in /api/choice-affirmation:', error);
+    return c.json({ 
+      error: error.message || 'An unexpected error occurred' 
+    }, 500);
+  }
+});
+
+// Generate interactive elements endpoint
+app.post('/api/interactive-elements', async (c) => {
+  try {
+    const { previousAffirmation, userPath } = await c.req.json();
+    
+    if (!previousAffirmation) {
+      return c.json({ error: 'Previous affirmation is required' }, 400);
+    }
+    
+    const apiKey = c.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      return c.json({ 
+        error: 'GEMINI_API_KEY is not configured. Please set up your API key in the Cloudflare Worker.' 
+      }, 500);
+    }
+    
+    const interactiveElements = await generateInteractiveElements(previousAffirmation, userPath, apiKey);
+    return c.json(interactiveElements);
+  } catch (error) {
+    console.error('Error in /api/interactive-elements:', error);
     return c.json({ 
       error: error.message || 'An unexpected error occurred' 
     }, 500);

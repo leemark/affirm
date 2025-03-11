@@ -25,6 +25,7 @@ class AffirmationManager {
         // Emotional context
         this.selectedEmotion = null;
         this.lastChoice = null;
+        this.choiceHistory = [];
     }
     
     // Load the initial affirmation from the API
@@ -834,22 +835,80 @@ class AffirmationManager {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     previousAffirmation: currentAffirmation,
-                    choice
+                    choice: choice
                 })
             });
             
             if (!response.ok) {
-                throw new Error('Failed to fetch choice-based affirmation');
+                throw new Error('Failed to fetch choice affirmation');
             }
             
             const data = await response.json();
             return data.affirmation;
         } catch (error) {
-            console.error('Error fetching choice-based affirmation:', error);
-            // Fallback to a hardcoded choice-based affirmation
+            console.error('Error fetching choice affirmation:', error);
+            // Fallback to a static affirmation based on the choice
             return this.getHardcodedChoiceAffirmation(choice);
         }
+    }
+    
+    // Fetch interactive elements (question and choice buttons) from the API
+    async fetchInteractiveElements() {
+        try {
+            if (!this.API_ENABLED) {
+                // Return default interactive elements if API is not enabled
+                return {
+                    question: "Which path would you like to explore next?",
+                    optionA: "Inner strength",
+                    optionAId: "strength",
+                    optionB: "Self-compassion",
+                    optionBId: "compassion"
+                };
+            }
+            
+            // Construct user path data
+            const userPath = {
+                initialEmotion: this.selectedEmotion,
+                choices: this.choiceHistory || []
+            };
+            
+            // Use the configured API URL
+            const response = await fetch(`${this.API_URL}/api/interactive-elements`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    previousAffirmation: this.currentAffirmation,
+                    userPath: userPath
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch interactive elements');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching interactive elements:', error);
+            // Fallback to default interactive elements
+            return {
+                question: "Which path would you like to explore next?",
+                optionA: "Inner strength",
+                optionAId: "strength",
+                optionB: "Self-compassion",
+                optionBId: "compassion"
+            };
+        }
+    }
+    
+    // Track the user's choice history
+    addChoiceToHistory(choice) {
+        if (!this.choiceHistory) {
+            this.choiceHistory = [];
+        }
+        this.choiceHistory.push(choice);
     }
 } 

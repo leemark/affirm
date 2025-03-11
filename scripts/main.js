@@ -75,23 +75,53 @@ function showEmotionSelectionUI() {
 }
 
 // Show binary choice UI
-function showChoiceSelectionUI() {
+async function showChoiceSelectionUI() {
     if (debugMode) console.log("Showing choice selection UI");
     
-    // Generate choices based on current affirmation
-    const choices = interactiveUI.generateChoiceOptions(affirmationManager.currentAffirmation);
-    
-    // Show the choice selection UI and set callback
-    interactiveUI.showChoiceSelection(choices, (choice) => {
-        selectedChoice = choice;
-        if (debugMode) console.log("Selected choice:", choice);
+    try {
+        // Fetch dynamic interactive elements from the API
+        const interactiveElements = await affirmationManager.fetchInteractiveElements();
         
-        // Reset the affirmation counter
-        interactiveUI.resetAffirmationCount();
+        // Track the last choice in the affirmation manager
+        if (selectedChoice) {
+            affirmationManager.addChoiceToHistory(selectedChoice);
+        }
         
-        // Request next affirmation with the selected choice
-        requestNextAffirmationWithChoice(choice);
-    });
+        // Show the dynamic choice selection UI and set callback
+        interactiveUI.showChoiceSelection(interactiveElements, (choice) => {
+            selectedChoice = choice;
+            if (debugMode) console.log("Selected choice:", choice);
+            
+            // Reset the affirmation counter
+            interactiveUI.resetAffirmationCount();
+            
+            // Start transition to the next affirmation
+            changeState('transitioning');
+            
+            // Request the next affirmation based on the selected choice
+            requestNextAffirmationWithChoice(choice);
+        });
+    } catch (error) {
+        console.error("Error fetching interactive elements:", error);
+        
+        // Fallback to generating choices based on current affirmation
+        const choices = interactiveUI.generateChoiceOptions(affirmationManager.currentAffirmation);
+        
+        // Show the choice selection UI with fallback options
+        interactiveUI.showChoiceSelection(choices, (choice) => {
+            selectedChoice = choice;
+            if (debugMode) console.log("Selected choice:", choice);
+            
+            // Reset the affirmation counter
+            interactiveUI.resetAffirmationCount();
+            
+            // Start transition to the next affirmation
+            changeState('transitioning');
+            
+            // Request the next affirmation based on the selected choice
+            requestNextAffirmationWithChoice(choice);
+        });
+    }
 }
 
 // Load initial affirmation with emotion context
@@ -106,10 +136,6 @@ function loadInitialAffirmationWithEmotion(emotion) {
         
         // Set current state and start timer
         changeState('displaying');
-        
-        // Show progress indicator
-        interactiveUI.updateProgressIndicator(1);
-        interactiveUI.showProgressIndicator();
     });
 }
 
@@ -146,16 +172,12 @@ function changeState(newState) {
             break;
             
         case 'initializing':
-            // Hide progress indicator during initialization
-            interactiveUI.hideProgressIndicator();
+            // No special actions needed
             break;
             
         case 'displaying':
             displayStartTime = millis();
             requestInProgress = false; // Reset flag when entering displaying state
-            
-            // Show progress indicator during display
-            interactiveUI.showProgressIndicator();
             break;
             
         case 'transitioning':
@@ -167,8 +189,7 @@ function changeState(newState) {
             break;
             
         case 'choice_selection':
-            // Hide progress indicator during choice selection
-            interactiveUI.hideProgressIndicator();
+            // No specific actions needed 
             break;
     }
 }
@@ -190,10 +211,6 @@ function draw() {
         case 'displaying':
             // Display and update characters
             affirmationManager.updateAndDisplayCharacters();
-            
-            // Update progress indicator
-            const currentCount = interactiveUI.affirmationCount % interactiveUI.CHOICE_INTERVAL;
-            interactiveUI.updateProgressIndicator(currentCount === 0 ? interactiveUI.CHOICE_INTERVAL : currentCount);
             
             // Check if it's time to transition to a new affirmation
             if (!requestInProgress && 

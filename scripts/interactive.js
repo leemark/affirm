@@ -12,7 +12,13 @@ class InteractiveUI {
             { id: 'tired', label: 'Tired' },
             { id: 'sad', label: 'Sad' },
             { id: 'calm', label: 'Calm' },
-            { id: 'overwhelmed', label: 'Overwhelmed' }
+            { id: 'overwhelmed', label: 'Overwhelmed' },
+            { id: 'content', label: 'Content' },
+            { id: 'excited', label: 'Excited' },
+            { id: 'grateful', label: 'Grateful' },
+            { id: 'neutral', label: 'Neutral' },
+            { id: 'curious', label: 'Curious' },
+            { id: 'peaceful', label: 'Peaceful' }
         ];
         
         // UI Elements
@@ -186,7 +192,7 @@ class InteractiveUI {
     }
     
     /**
-     * Show binary choice UI
+     * Show the choice selection UI
      * @param {Array} choices - Array of choice objects with id and label
      * @param {Function} callback - Function to call with selected choice
      */
@@ -198,7 +204,7 @@ class InteractiveUI {
         // Create question
         const question = document.createElement('div');
         question.className = 'question';
-        question.textContent = 'Which path would you like to explore next?';
+        question.textContent = choices.question || 'Which path would you like to explore next?';
         this.container.appendChild(question);
         
         // Create buttons container
@@ -206,14 +212,31 @@ class InteractiveUI {
         buttonContainer.className = 'button-container';
         this.container.appendChild(buttonContainer);
         
-        // Create choice buttons
-        choices.forEach(choice => {
-            const button = document.createElement('button');
-            button.className = 'interactive-button';
-            button.textContent = choice.label;
-            button.addEventListener('click', () => this.onChoiceSelected(choice.id));
-            buttonContainer.appendChild(button);
-        });
+        // If choices comes from the API with optionA/optionB format
+        if (choices.optionA && choices.optionB) {
+            const optionA = document.createElement('button');
+            optionA.className = 'interactive-button';
+            optionA.textContent = choices.optionA;
+            optionA.addEventListener('click', () => this.onChoiceSelected(choices.optionAId));
+            buttonContainer.appendChild(optionA);
+            
+            const optionB = document.createElement('button');
+            optionB.className = 'interactive-button';
+            optionB.textContent = choices.optionB;
+            optionB.addEventListener('click', () => this.onChoiceSelected(choices.optionBId));
+            buttonContainer.appendChild(optionB);
+        } 
+        // Otherwise use the traditional array format
+        else if (Array.isArray(choices)) {
+            // Create choice buttons
+            choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.className = 'interactive-button';
+                button.textContent = choice.label;
+                button.addEventListener('click', () => this.onChoiceSelected(choice.id));
+                buttonContainer.appendChild(button);
+            });
+        }
     }
     
     /**
@@ -250,54 +273,21 @@ class InteractiveUI {
      * @param {number} current - Current affirmation count in the cycle
      */
     updateProgressIndicator(current) {
-        const indicatorContainer = document.querySelector('.progress-indicator');
-        
-        // Create if it doesn't exist
-        if (!indicatorContainer) {
-            const container = document.createElement('div');
-            container.className = 'progress-indicator';
-            
-            for (let i = 0; i < this.CHOICE_INTERVAL; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'progress-dot';
-                if (i < current) {
-                    dot.classList.add('active');
-                }
-                container.appendChild(dot);
-            }
-            
-            document.querySelector('.container').appendChild(container);
-        } else {
-            // Update existing
-            const dots = indicatorContainer.querySelectorAll('.progress-dot');
-            dots.forEach((dot, index) => {
-                if (index < current) {
-                    dot.classList.add('active');
-                } else {
-                    dot.classList.remove('active');
-                }
-            });
-        }
+        // Progress indicator functionality removed
     }
     
     /**
      * Hide progress indicator
      */
     hideProgressIndicator() {
-        const indicator = document.querySelector('.progress-indicator');
-        if (indicator) {
-            indicator.style.opacity = '0';
-        }
+        // Progress indicator functionality removed
     }
     
     /**
      * Show progress indicator
      */
     showProgressIndicator() {
-        const indicator = document.querySelector('.progress-indicator');
-        if (indicator) {
-            indicator.style.opacity = '1';
-        }
+        // Progress indicator functionality removed
     }
     
     /**

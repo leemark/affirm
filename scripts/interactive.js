@@ -65,13 +65,16 @@ class InteractiveUI {
                 color: white;
                 z-index: 10;
                 opacity: 0;
-                transition: opacity 0.5s ease;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
                 pointer-events: none;
+                visibility: hidden;
+                background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background to cover canvas */
             }
             
             .interactive-container.active {
                 opacity: 1;
                 pointer-events: auto;
+                visibility: visible;
             }
             
             .question {
@@ -257,6 +260,10 @@ class InteractiveUI {
      */
     hideUI() {
         this.container.classList.remove('active');
+        // Clear the container content to prevent brief visibility during transitions
+        setTimeout(() => {
+            this.container.innerHTML = '';
+        }, 300); // Short delay to allow CSS transition to complete
     }
     
     /**

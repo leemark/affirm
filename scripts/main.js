@@ -161,6 +161,13 @@ function requestNextAffirmationWithChoice(choice) {
 // Helper function to change states with logging
 function changeState(newState) {
     if (debugMode) console.log(`State change: ${currentState} -> ${newState} at ${millis()}ms`);
+    
+    // Special handling for transitioning from choice_selection
+    if (currentState === 'choice_selection' && newState === 'transitioning') {
+        // Force a canvas redraw immediately to clear any lingering text
+        background(0); // Clear the canvas with black background
+    }
+    
     currentState = newState;
     lastStateChange = millis();
     

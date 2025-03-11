@@ -42,18 +42,17 @@ async function generateAffirmation(apiKey) {
     // Construct prompt
     const prompt = `Generate a single, profound piece of wisdom that blends these philosophical styles:
                     1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
-                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
-                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
-                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    2. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    3. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
                     
                     The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
                     Make it deep, insightful, and timeless.
                     For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
-                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
                     For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
                     For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
                     
+                    Use clear, straightforward sentence structure for better readability.
                     Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
@@ -100,18 +99,17 @@ async function generateRelatedAffirmation(previousAffirmation, apiKey) {
                     
                     Blend these philosophical styles:
                     1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
-                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
-                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
-                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    2. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    3. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
                     
                     The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
                     Make it deep, insightful, and timeless.
                     For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
-                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
                     For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
                     For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
                     
+                    Use clear, straightforward sentence structure for better readability.
                     Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
@@ -158,18 +156,17 @@ async function generateEmotionBasedAffirmation(emotion, apiKey) {
                     
                     Blend these philosophical styles:
                     1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
-                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
-                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
-                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    2. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    3. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
                     
                     The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
                     Make it deep, insightful, and timeless.
                     For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
-                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
                     For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
                     For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
                     
+                    Use clear, straightforward sentence structure for better readability.
                     Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.
@@ -218,18 +215,17 @@ async function generateChoiceBasedAffirmation(previousAffirmation, choice, apiKe
                     
                     Blend these philosophical styles:
                     1. Tolkien-style wisdom (journeys, light in darkness, ancient strength)
-                    2. Yoda-style syntax inversions and wisdom ("Do or do not", inverted sentence structure)
-                    3. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
-                    4. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
+                    2. Kahlil Gibran poetic prose from "The Prophet" (metaphorical language, balance of opposites)
+                    3. Cognitive Behavioral Therapy concepts (thought patterns, challenging beliefs)
                     
                     The wisdom should be a single sentence, 10-20 words.
                     It should be written in second person (using "you").
                     Make it deep, insightful, and timeless.
                     For Tolkien elements, you might reference journeys, paths, ancient wisdom, or light in darkness.
-                    For Yoda elements, occasionally use inverted syntax like "Strong you are" or "Find peace, you will."
                     For Kahlil Gibran elements, use rich metaphorical language and balance opposites like joy/sorrow.
                     For CBT elements, include insights about how thoughts shape reality or questioning limiting beliefs.
                     
+                    Use clear, straightforward sentence structure for better readability.
                     Avoid obvious character references or direct quotes, just capture the essence of these styles.
                     Avoid religious references.
                     Do not include any introductory text, commentary, quotation marks or ending period.

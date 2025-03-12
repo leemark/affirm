@@ -238,7 +238,7 @@ canvas {
     color: white;
 }
 
-/* Breathing Animation Styles */
+/* Breathing Animation Styles - Updated */
 .breathing-container {
     position: absolute;
     top: 0;
@@ -268,17 +268,37 @@ canvas {
     border: 2px solid rgba(255, 255, 255, 0.5);
     margin-bottom: 15px;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
 }
 
 .breathing-text {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     letter-spacing: 2px;
+    opacity: 0.9;
+    margin-bottom: 10px;
+    font-weight: 300;
+}
+
+.breathing-counter {
+    font-size: 1.2rem;
     opacity: 0.8;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.breathing-counter span {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: #ff7b00;
+}
+
+.breathing-counter.pulse {
+    animation: counterPulse 0.5s ease;
 }
 
 .breathing-progress {
     position: absolute;
-    bottom: 40px;
+    bottom: 100px;
     width: 200px;
     height: 4px;
     background-color: rgba(255, 255, 255, 0.2);
@@ -291,6 +311,334 @@ canvas {
     background-color: rgba(255, 255, 255, 0.7);
     border-radius: 2px;
     transition: width 0.1s linear;
+}
+
+.breathing-skip {
+    position: absolute;
+    bottom: 40px;
+    padding: 8px 20px;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.breathing-skip:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Points and Gamification Styles */
+.points-container {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: #ffcc00;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 900;
+    transition: all 0.2s ease;
+    cursor: help;
+}
+
+.points-container:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    transform: scale(1.05);
+}
+
+.points-icon {
+    font-size: 18px;
+    color: #ffcc00;
+}
+
+.point-award {
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: 15px;
+    padding: 8px 12px;
+    font-size: 14px;
+    z-index: 1000;
+    animation: pointAwardAnimation 1.5s ease-out;
+}
+
+@keyframes pointAwardAnimation {
+    0% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+    10% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 1;
+        transform: translateY(-40px);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+}
+
+.achievement-notification {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    width: 300px;
+    z-index: 1000;
+    box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+    animation: achievementAnimation 6s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    border: 2px solid #ffcc00;
+}
+
+.achievement-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    color: #ffcc00;
+    width: 100%;
+}
+
+.achievement-icon {
+    font-size: 24px;
+}
+
+.achievement-description {
+    text-align: center;
+    color: #ddd;
+    margin: 5px 0;
+}
+
+.achievement-points {
+    color: #ffcc00;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+@keyframes achievementAnimation {
+    0%, 100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.9);
+    }
+    10%, 90% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+.badges-button {
+    position: fixed;
+    top: 15px;
+    right: 85px;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: #ffcc00;
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 900;
+    transition: all 0.2s ease;
+}
+
+.badges-button:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+}
+
+.badges-panel {
+    position: fixed;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    border-radius: 15px;
+    padding: 25px;
+    width: 90%;
+    max-width: 600px;
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.badges-panel.active {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+.badges-panel h2 {
+    text-align: center;
+    color: #ffcc00;
+    margin-bottom: 20px;
+    font-weight: normal;
+}
+
+.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+.badge-item {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.badge-item:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-3px);
+}
+
+.badge-item.locked {
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+.badge-item.locked:hover {
+    opacity: 0.8;
+}
+
+.badge-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.badge-name {
+    font-weight: 500;
+    color: #ffcc00;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.badge-description {
+    font-size: 12px;
+    color: #ccc;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.badge-points {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 12px;
+    color: #ffcc00;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.challenge-container {
+    position: fixed;
+    bottom: 15px;
+    left: 15px;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 15px;
+    width: 200px;
+    z-index: 900;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.challenge-container:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    transform: scale(1.02);
+}
+
+.challenge-title {
+    font-size: 14px;
+    color: #ffcc00;
+    font-weight: 500;
+}
+
+.challenge-description {
+    font-size: 12px;
+    color: #fff;
+}
+
+.challenge-reward {
+    font-size: 11px;
+    color: #aaa;
+}
+
+.challenge-complete {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: #3CB043;
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+/* Animation Keyframes */
+@keyframes counterPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+}
+
+@keyframes floatUp {
+    0% { opacity: 0; transform: translateY(0); }
+    10% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-80px); }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(300px); }
+    to { transform: translateX(0); }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); }
+    to { transform: translateX(300px); }
 }
 
 /* Streak and Gamification Styles */

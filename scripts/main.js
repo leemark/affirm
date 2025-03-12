@@ -25,11 +25,100 @@ let breathingPhase = 'inhale'; // 'inhale', 'hold', 'exhale'
 let breathingCycleCount = 0;
 let breathingStartTime = 0;
 let breathingDuration = {
-    inhale: 4000, // 4 seconds
-    hold: 2000,   // 2 seconds
-    exhale: 4000   // 4 seconds
+    inhale: 2000,  // 2 seconds
+    hold: 1000,    // 1 second
+    exhale: 2000   // 2 seconds
 };
-let showBreathingGuidance = true; // Set to false to disable breathing guidance
+let showBreathingGuidance = true;
+
+// Gamification variables
+let pointSystem = {
+    dailyVisit: 10,
+    completedAffirmation: 5,
+    completedBreathing: 15,
+    journalEntry: 20,
+    favoriteAffirmation: 5,
+    emotionSelection: 5,
+    streakDay: 2,
+    streakMultiplier: 0.1,  // 10% per day of streak
+    comboMultiplier: 0.05   // 5% per activity in same session
+};
+let userPoints = 0;
+let sessionActivities = 0;
+let lastPointAward = 0;
+let pointAnimationQueue = [];
+
+// Achievement definitions
+let achievements = [
+    {
+        id: 'first_visit',
+        name: 'First Step',
+        description: 'Begin your affirmation journey',
+        icon: '🌱',
+        points: 10,
+        unlocked: false
+    },
+    {
+        id: 'three_day_streak',
+        name: 'Consistency',
+        description: 'Complete a 3-day streak',
+        icon: '📆',
+        points: 15,
+        unlocked: false
+    },
+    {
+        id: 'seven_day_streak',
+        name: 'Dedicated',
+        description: 'Complete a 7-day streak',
+        icon: '🔥',
+        points: 25,
+        unlocked: false
+    },
+    {
+        id: 'breathing_master',
+        name: 'Breathing Master',
+        description: 'Complete 10 breathing exercises',
+        icon: '🧘',
+        points: 30,
+        unlocked: false
+    },
+    {
+        id: 'reflection',
+        name: 'Self-Reflection',
+        description: 'Write 5 journal entries',
+        icon: '📓',
+        points: 25,
+        unlocked: false
+    },
+    {
+        id: 'collector',
+        name: 'Collector',
+        description: 'Save 10 favorite affirmations',
+        icon: '💖',
+        points: 20,
+        unlocked: false
+    },
+    {
+        id: 'emotional_explorer',
+        name: 'Emotional Explorer',
+        description: 'Experience 5 different emotions',
+        icon: '🌈',
+        points: 20,
+        unlocked: false
+    },
+    {
+        id: 'dedicated',
+        name: 'Inner Growth',
+        description: 'Earn 500 points',
+        icon: '🏆',
+        points: 50,
+        unlocked: false
+    }
+];
+
+// Daily challenge
+let dailyChallenge = null;
+let challengeCompleted = false;
 
 // API Configuration
 // To enable the API after deploying the Cloudflare Worker:
@@ -493,179 +582,243 @@ function updateBackgroundColor() {
 }
 
 /**
- * Start breathing guidance animation
+ * Start breathing guidance
  */
 function startBreathingGuidance() {
-    if (debugMode) console.log("Starting breathing guidance");
+    if (!showBreathingGuidance) {
+        getNextAffirmation();
+        return;
+    }
     
     // Create breathing container if it doesn't exist
-    let breathingContainer = document.getElementById('breathing-container');
+    let breathingContainer = document.querySelector('.breathing-container');
     if (!breathingContainer) {
         breathingContainer = document.createElement('div');
         breathingContainer.className = 'breathing-container';
-        breathingContainer.id = 'breathing-container';
         
         // Create breathing circle
-        const circle = document.createElement('div');
-        circle.className = 'breathing-circle';
-        circle.id = 'breathing-circle';
+        const breathingCircle = document.createElement('div');
+        breathingCircle.className = 'breathing-circle';
         
         // Create breathing text
-        const text = document.createElement('div');
-        text.className = 'breathing-text';
-        text.id = 'breathing-text';
-        text.textContent = 'Inhale';
+        const breathingText = document.createElement('div');
+        breathingText.className = 'breathing-text';
+        breathingText.textContent = 'Inhale';
+        
+        // Create cycle counter
+        const cycleCounter = document.createElement('div');
+        cycleCounter.className = 'breathing-counter';
+        cycleCounter.id = 'breathing-counter';
+        cycleCounter.textContent = 'Cycle 1 of 3';
         
         // Create progress bar
-        const progress = document.createElement('div');
-        progress.className = 'breathing-progress';
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'breathing-progress-container';
         
-        const progressInner = document.createElement('div');
-        progressInner.className = 'breathing-progress-inner';
-        progressInner.id = 'breathing-progress-inner';
-        progressInner.style.width = '0%';
+        const progressBar = document.createElement('div');
+        progressBar.className = 'breathing-progress';
+        progressBar.id = 'breathing-progress';
         
-        progress.appendChild(progressInner);
+        progressContainer.appendChild(progressBar);
         
-        // Append elements
-        breathingContainer.appendChild(circle);
-        breathingContainer.appendChild(text);
-        breathingContainer.appendChild(progress);
+        // Create skip button
+        const skipButton = document.createElement('button');
+        skipButton.className = 'breathing-skip';
+        skipButton.textContent = 'Skip';
+        skipButton.addEventListener('click', () => {
+            // Award half points for skipping
+            awardPoints(Math.floor(pointSystem.completedBreathing / 2), 'Skipped breathing');
+            
+            // End breathing guidance
+            endBreathingGuidance();
+        });
         
-        // Append to container
+        // Append all elements
+        breathingContainer.appendChild(breathingCircle);
+        breathingContainer.appendChild(breathingText);
+        breathingContainer.appendChild(cycleCounter);
+        breathingContainer.appendChild(progressContainer);
+        breathingContainer.appendChild(skipButton);
+        
         document.querySelector('.container').appendChild(breathingContainer);
     }
     
-    // Initialize breathing variables
+    // Initialize breathing cycle
+    breathingStartTime = Date.now();
     breathingPhase = 'inhale';
     breathingCycleCount = 0;
-    breathingStartTime = millis();
+    totalBreathingTime = (breathingDuration.inhale + breathingDuration.hold + breathingDuration.exhale) * 3; // 3 cycles
     
-    // Show breathing container
-    breathingContainer.classList.add('active');
+    // Update cycle counter
+    updateBreathingCounter(breathingCycleCount + 1, 3);
     
-    // Change state
-    changeState('breathing_guidance');
+    // Start animation
+    requestAnimationFrame(drawBreathingGuidance);
 }
 
 /**
  * Draw breathing guidance animation
  */
 function drawBreathingGuidance() {
-    const currentTime = millis();
+    const currentTime = Date.now();
     const elapsedTime = currentTime - breathingStartTime;
     
     // Get elements
-    const circle = document.getElementById('breathing-circle');
-    const text = document.getElementById('breathing-text');
-    const progressInner = document.getElementById('breathing-progress-inner');
+    const container = document.querySelector('.breathing-container');
+    const circle = document.querySelector('.breathing-circle');
+    const text = document.querySelector('.breathing-text');
+    const progressBar = document.getElementById('breathing-progress');
     
-    // Calculate total cycle duration
-    const totalCycleDuration = breathingDuration.inhale + breathingDuration.hold + breathingDuration.exhale;
+    if (!container || !circle || !text) return;
+    
+    // Calculate cycle duration
+    const cycleDuration = breathingDuration.inhale + breathingDuration.hold + breathingDuration.exhale;
     
     // Calculate current cycle progress
-    const cycleProgress = (elapsedTime % totalCycleDuration) / totalCycleDuration;
+    const cycleProgress = (elapsedTime % cycleDuration) / cycleDuration;
+    
+    // Calculate overall progress
+    const overallProgress = Math.min(elapsedTime / totalBreathingTime, 1);
     
     // Update progress bar
-    if (progressInner) {
-        progressInner.style.width = `${cycleProgress * 100}%`;
+    if (progressBar) {
+        progressBar.style.width = `${overallProgress * 100}%`;
     }
     
-    // Determine current phase
-    const inhaleEnd = breathingDuration.inhale / totalCycleDuration;
-    const holdEnd = (breathingDuration.inhale + breathingDuration.hold) / totalCycleDuration;
+    // Determine current phase within the cycle
+    const cycleTime = elapsedTime % cycleDuration;
     
-    let newPhase;
-    if (cycleProgress < inhaleEnd) {
+    let newPhase = breathingPhase;
+    let scale = 1;
+    
+    if (cycleTime < breathingDuration.inhale) {
+        // Inhale phase
         newPhase = 'inhale';
-    } else if (cycleProgress < holdEnd) {
+        const phaseProgress = cycleTime / breathingDuration.inhale;
+        scale = 1 + phaseProgress * 0.5; // Scale from 1 to 1.5
+    } else if (cycleTime < breathingDuration.inhale + breathingDuration.hold) {
+        // Hold phase
         newPhase = 'hold';
+        scale = 1.5; // Stay at max scale
     } else {
+        // Exhale phase
         newPhase = 'exhale';
+        const phaseProgress = (cycleTime - breathingDuration.inhale - breathingDuration.hold) / breathingDuration.exhale;
+        scale = 1.5 - phaseProgress * 0.5; // Scale from 1.5 back to 1
     }
     
-    // Check if phase changed
+    // If phase changed, update text
     if (newPhase !== breathingPhase) {
         breathingPhase = newPhase;
         
-        // Update text
-        if (text) {
-            text.textContent = breathingPhase.charAt(0).toUpperCase() + breathingPhase.slice(1);
-        }
-        
-        // If we completed a cycle, increment counter
+        // Update text based on phase
         if (breathingPhase === 'inhale') {
-            breathingCycleCount++;
-            if (debugMode) console.log(`Completed breathing cycle ${breathingCycleCount}`);
-        }
-    }
-    
-    // Update circle size based on phase
-    if (circle) {
-        let size;
-        
-        if (breathingPhase === 'inhale') {
-            // Calculate progress within inhale phase
-            const phaseProgress = (elapsedTime % totalCycleDuration) / breathingDuration.inhale;
-            size = map(phaseProgress, 0, 1, 100, 200);
+            text.textContent = 'Inhale';
+            text.style.color = '#7DF9FF'; // Light blue for inhale
         } else if (breathingPhase === 'hold') {
-            size = 200; // Maximum size during hold
-        } else { // exhale
-            // Calculate progress within exhale phase
-            const phaseElapsed = (elapsedTime % totalCycleDuration) - breathingDuration.inhale - breathingDuration.hold;
-            const phaseProgress = phaseElapsed / breathingDuration.exhale;
-            size = map(phaseProgress, 0, 1, 200, 100);
+            text.textContent = 'Hold';
+            text.style.color = '#F3DE8A'; // Yellow for hold
+        } else {
+            text.textContent = 'Exhale';
+            text.style.color = '#97C1A9'; // Green for exhale
         }
         
-        circle.style.width = `${size}px`;
-        circle.style.height = `${size}px`;
+        // If we've completed a full cycle, increment the counter
+        if (breathingPhase === 'inhale' && cycleTime < 100) { // Small buffer to avoid double counting
+            // Check if we've completed an entire cycle (not the first one)
+            if (elapsedTime > cycleDuration) {
+                breathingCycleCount++;
+                updateBreathingCounter(breathingCycleCount + 1, 3);
+                
+                // Provide visual feedback for completing a cycle
+                circle.style.animation = 'counterPulse 0.5s';
+                setTimeout(() => {
+                    circle.style.animation = '';
+                }, 500);
+            }
+        }
     }
     
-    // Check if we've completed 3 cycles
+    // Update circle scale
+    circle.style.transform = `scale(${scale})`;
+    
+    // If we've completed 3 cycles, end the breathing guidance
     if (breathingCycleCount >= 3) {
+        // Award points for completing the breathing exercise
+        awardPoints(pointSystem.completedBreathing, 'Completed breathing');
+        
+        // Track breathing exercises completed
+        const breathingCount = parseInt(localStorage.getItem('affirm_breathing_count') || '0') + 1;
+        localStorage.setItem('affirm_breathing_count', breathingCount.toString());
+        
+        // Update breathing achievement
+        updateBreathingAchievement(breathingCount);
+        
+        // End breathing guidance
         endBreathingGuidance();
+        return;
+    }
+    
+    // Continue animation
+    requestAnimationFrame(drawBreathingGuidance);
+}
+
+/**
+ * Update breathing counter
+ * @param {number} current - Current cycle
+ * @param {number} total - Total cycles
+ */
+function updateBreathingCounter(current, total) {
+    const counter = document.getElementById('breathing-counter');
+    if (counter) {
+        counter.textContent = `Cycle ${current} of ${total}`;
+        
+        // Provide visual feedback
+        counter.style.animation = 'counterPulse 0.5s';
+        setTimeout(() => {
+            counter.style.animation = '';
+        }, 500);
     }
 }
 
 /**
- * End breathing guidance animation
+ * End breathing guidance
  */
 function endBreathingGuidance() {
-    if (debugMode) console.log("Ending breathing guidance");
-    
-    // Hide breathing container
-    const breathingContainer = document.getElementById('breathing-container');
-    if (breathingContainer) {
-        breathingContainer.classList.remove('active');
+    // Remove breathing container with fade
+    const container = document.querySelector('.breathing-container');
+    if (container) {
+        container.style.opacity = '0';
+        setTimeout(() => {
+            container.remove();
+        }, 500);
     }
     
-    // Enforce minimum time between API requests
-    const currentTime = millis();
-    if (currentTime - lastApiRequestTime < MIN_API_INTERVAL) {
-        // Not enough time has passed since the last API request
-        if (debugMode) console.log(`Waiting for minimum API interval (${Math.floor((MIN_API_INTERVAL - (currentTime - lastApiRequestTime)) / 1000)}s remaining)`);
-        
-        // Go back to displaying state and wait for next check
-        changeState('displaying');
-        return;
+    // Check if we need to wait a bit between affirmations
+    const currentTime = Date.now();
+    const timeElapsedSinceLastAPIRequest = currentTime - lastApiRequestTime;
+    
+    if (timeElapsedSinceLastAPIRequest < MIN_API_INTERVAL) {
+        // Wait the remaining time
+        const waitTime = MIN_API_INTERVAL - timeElapsedSinceLastAPIRequest;
+        setTimeout(() => {
+            getNextAffirmation();
+        }, waitTime);
+    } else {
+        // Get next affirmation immediately
+        getNextAffirmation();
     }
-    
-    // Set flag to prevent multiple requests
-    requestInProgress = true;
-    lastApiRequestTime = currentTime;
-    
-    if (debugMode) console.log("Requesting next affirmation after breathing (API call)");
-    
-    // Request the next affirmation and start transition
-    affirmationManager.requestNextAffirmation().then(() => {
-        // Start fading out current characters
-        affirmationManager.prepareForTransition();
-        changeState('transitioning');
-    }).catch(error => {
-        console.error("Error requesting next affirmation:", error);
-        requestInProgress = false; // Reset flag on error
-        changeState('displaying'); // Go back to displaying state
-    });
+}
+
+/**
+ * Update breathing achievement based on count
+ * @param {number} breathingCount - Number of completed breathing exercises
+ */
+function updateBreathingAchievement(breathingCount) {
+    // Check if we've completed 10 breathing exercises
+    if (breathingCount >= 10) {
+        unlockAchievement('breathing_master');
+    }
 }
 
 // Handle window resize
@@ -735,4 +888,564 @@ function touchEnded() {
     // Call mouseReleased to handle touch end in the same way
     mouseReleased();
     return false;
-} 
+}
+
+/**
+ * Initialize gamification system
+ */
+function initializeGamification() {
+    if (debugMode) console.log("Initializing gamification system");
+    
+    // Load points from localStorage
+    loadUserPoints();
+    
+    // Load achievements from localStorage
+    loadAchievements();
+    
+    // Create points display
+    createPointsDisplay();
+    
+    // Create badges button
+    createBadgesButton();
+    
+    // Set up daily challenge
+    setupDailyChallenge();
+    
+    // Award points for daily visit (only once per day)
+    const today = new Date().toDateString();
+    const lastVisit = localStorage.getItem('affirm_last_visit');
+    
+    if (lastVisit !== today) {
+        // First visit of the day
+        awardPoints(pointSystem.dailyVisit, 'Daily visit');
+        localStorage.setItem('affirm_last_visit', today);
+        
+        // Check for first visit achievement
+        unlockAchievement('first_visit');
+    }
+}
+
+/**
+ * Load user points from localStorage
+ */
+function loadUserPoints() {
+    userPoints = parseInt(localStorage.getItem('affirm_points') || '0');
+    
+    // Check for dedicated achievement
+    if (userPoints >= 500) {
+        unlockAchievement('dedicated');
+    }
+}
+
+/**
+ * Load achievements from localStorage
+ */
+function loadAchievements() {
+    const savedAchievements = localStorage.getItem('affirm_achievements');
+    if (savedAchievements) {
+        const unlockedAchievements = JSON.parse(savedAchievements);
+        
+        // Update achievements array with unlocked status
+        unlockedAchievements.forEach(id => {
+            const achievement = achievements.find(a => a.id === id);
+            if (achievement) {
+                achievement.unlocked = true;
+            }
+        });
+    }
+}
+
+/**
+ * Create points display
+ */
+function createPointsDisplay() {
+    const pointsContainer = document.createElement('div');
+    pointsContainer.className = 'points-container';
+    pointsContainer.id = 'points-container';
+    
+    // Create points icon
+    const pointsIcon = document.createElement('span');
+    pointsIcon.className = 'points-icon';
+    pointsIcon.innerHTML = '✦';
+    
+    // Create points count
+    const pointsCount = document.createElement('span');
+    pointsCount.className = 'points-count';
+    pointsCount.id = 'points-count';
+    pointsCount.textContent = userPoints;
+    
+    // Append elements
+    pointsContainer.appendChild(pointsIcon);
+    pointsContainer.appendChild(pointsCount);
+    
+    // Append to container
+    document.querySelector('.container').appendChild(pointsContainer);
+}
+
+/**
+ * Create badges button
+ */
+function createBadgesButton() {
+    const badgesButton = document.createElement('div');
+    badgesButton.className = 'badges-button';
+    badgesButton.innerHTML = '🏆';
+    badgesButton.title = 'Achievements';
+    badgesButton.addEventListener('click', () => {
+        showBadgesPanel();
+    });
+    
+    document.querySelector('.container').appendChild(badgesButton);
+}
+
+/**
+ * Award points to the user
+ * @param {number} points - Number of points to award
+ * @param {string} reason - Reason for awarding points
+ */
+function awardPoints(points, reason) {
+    // Apply streak multiplier if available
+    const streakData = JSON.parse(localStorage.getItem('affirm_streak') || '{"currentStreak": 0}');
+    const streakMultiplier = streakData.currentStreak > 1 ? 
+        1 + (streakData.currentStreak * pointSystem.streakMultiplier) : 1;
+    
+    // Apply combo multiplier if available
+    const comboMultiplier = sessionActivities > 1 ? 
+        1 + (sessionActivities * pointSystem.comboMultiplier) : 1;
+    
+    // Calculate final points with multipliers
+    const basePoints = points;
+    const finalPoints = Math.round(basePoints * streakMultiplier * comboMultiplier);
+    
+    // Update user points
+    userPoints += finalPoints;
+    
+    // Save to localStorage
+    localStorage.setItem('affirm_points', userPoints.toString());
+    
+    // Update points display
+    updatePointsDisplay(userPoints);
+    
+    // Show point award animation
+    showPointAward(finalPoints, reason, streakMultiplier > 1 || comboMultiplier > 1);
+    
+    // Check for dedicated achievement
+    if (userPoints >= 500) {
+        unlockAchievement('dedicated');
+    }
+    
+    // Check if this completes the daily challenge
+    checkChallengeCompletion(reason);
+    
+    if (debugMode) console.log(`Awarded ${finalPoints} points (base: ${basePoints}) for: ${reason}`);
+}
+
+/**
+ * Update points display
+ * @param {number} points - Current points
+ */
+function updatePointsDisplay(points) {
+    const pointsCount = document.getElementById('points-count');
+    if (pointsCount) {
+        pointsCount.textContent = points;
+    }
+}
+
+/**
+ * Show point award animation
+ * @param {number} points - Points awarded
+ * @param {string} reason - Reason for points
+ * @param {boolean} hasMultiplier - Whether a multiplier was applied
+ */
+function showPointAward(points, reason, hasMultiplier) {
+    // Create point award element
+    const pointAward = document.createElement('div');
+    pointAward.className = 'point-award';
+    
+    // Position near points display
+    const pointsContainer = document.getElementById('points-container');
+    if (pointsContainer) {
+        const rect = pointsContainer.getBoundingClientRect();
+        pointAward.style.top = `${rect.top + rect.height}px`;
+        pointAward.style.right = `${window.innerWidth - rect.right}px`;
+    } else {
+        // Fallback position
+        pointAward.style.top = '60px';
+        pointAward.style.right = '70px';
+    }
+    
+    // Set text based on whether there was a multiplier
+    if (hasMultiplier) {
+        pointAward.innerHTML = `+${points} points <span style="color:#ff7b00;">BONUS!</span>`;
+    } else {
+        pointAward.innerHTML = `+${points} points`;
+    }
+    
+    // Add to container
+    document.querySelector('.container').appendChild(pointAward);
+    
+    // Remove after animation completes
+    setTimeout(() => {
+        pointAward.remove();
+    }, 1500);
+}
+
+/**
+ * Unlock an achievement
+ * @param {string} achievementId - ID of the achievement to unlock
+ */
+function unlockAchievement(achievementId) {
+    // Find the achievement
+    const achievement = achievements.find(a => a.id === achievementId);
+    if (!achievement || achievement.unlocked) return;
+    
+    // Mark as unlocked
+    achievement.unlocked = true;
+    
+    // Save to localStorage
+    const unlockedAchievements = JSON.parse(localStorage.getItem('affirm_achievements') || '[]');
+    if (!unlockedAchievements.includes(achievementId)) {
+        unlockedAchievements.push(achievementId);
+        localStorage.setItem('affirm_achievements', JSON.stringify(unlockedAchievements));
+        
+        // Show achievement notification
+        showAchievementNotification(achievement);
+        
+        // Award points for the achievement
+        awardPoints(achievement.points, `Unlocked: ${achievement.name}`);
+    }
+}
+
+/**
+ * Show achievement notification
+ * @param {Object} achievement - Achievement object
+ */
+function showAchievementNotification(achievement) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'achievement-notification';
+    
+    // Create title
+    const title = document.createElement('div');
+    title.className = 'achievement-title';
+    title.innerHTML = `<div class="achievement-icon">${achievement.icon}</div><div class="achievement-name">${achievement.name}</div>`;
+    
+    // Create description
+    const description = document.createElement('div');
+    description.className = 'achievement-description';
+    description.textContent = achievement.description;
+    
+    // Create points
+    const points = document.createElement('div');
+    points.className = 'achievement-points';
+    points.textContent = `+${achievement.points} points`;
+    
+    // Append elements
+    notification.appendChild(title);
+    notification.appendChild(description);
+    notification.appendChild(points);
+    
+    // Add to container
+    document.querySelector('.container').appendChild(notification);
+    
+    // Remove after animation completes
+    setTimeout(() => {
+        notification.remove();
+    }, 6000);
+}
+
+/**
+ * Show badges panel
+ */
+function showBadgesPanel() {
+    // Create panel
+    const panel = document.createElement('div');
+    panel.className = 'badges-panel';
+    panel.id = 'badges-panel';
+    
+    // Create header
+    const header = document.createElement('h2');
+    header.textContent = 'Achievements';
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'close-preferences';
+    closeButton.innerHTML = '×';
+    closeButton.addEventListener('click', () => {
+        hideBadgesPanel();
+    });
+    
+    // Create badges grid
+    const badgesGrid = document.createElement('div');
+    badgesGrid.className = 'badges-grid';
+    
+    // Add each achievement to the grid
+    achievements.forEach(achievement => {
+        const badgeItem = document.createElement('div');
+        badgeItem.className = 'badge-item';
+        if (!achievement.unlocked) badgeItem.classList.add('locked');
+        
+        const badgeIcon = document.createElement('div');
+        badgeIcon.className = 'badge-icon';
+        badgeIcon.textContent = achievement.icon;
+        
+        const badgeName = document.createElement('div');
+        badgeName.className = 'badge-name';
+        badgeName.textContent = achievement.name;
+        
+        const badgeDescription = document.createElement('div');
+        badgeDescription.className = 'badge-description';
+        badgeDescription.textContent = achievement.description;
+        
+        const badgePoints = document.createElement('div');
+        badgePoints.className = 'badge-points';
+        badgePoints.textContent = `+${achievement.points}`;
+        
+        badgeItem.appendChild(badgeIcon);
+        badgeItem.appendChild(badgeName);
+        badgeItem.appendChild(badgeDescription);
+        if (!achievement.unlocked) badgeItem.appendChild(badgePoints);
+        
+        badgesGrid.appendChild(badgeItem);
+    });
+    
+    // Create total points display
+    const totalPoints = document.createElement('div');
+    totalPoints.style.textAlign = 'center';
+    totalPoints.style.marginTop = '20px';
+    totalPoints.style.fontSize = '1.2rem';
+    totalPoints.innerHTML = `Total Points: <span style="color: #ffcc00; font-weight: 500;">${userPoints}</span>`;
+    
+    // Append elements
+    panel.appendChild(header);
+    panel.appendChild(closeButton);
+    panel.appendChild(badgesGrid);
+    panel.appendChild(totalPoints);
+    
+    // Append to container
+    document.querySelector('.container').appendChild(panel);
+    
+    // Animate in
+    setTimeout(() => {
+        panel.classList.add('active');
+    }, 10);
+}
+
+/**
+ * Hide badges panel
+ */
+function hideBadgesPanel() {
+    const panel = document.getElementById('badges-panel');
+    if (panel) {
+        panel.classList.remove('active');
+        setTimeout(() => {
+            panel.remove();
+        }, 300);
+    }
+}
+
+/**
+ * Setup daily challenge
+ */
+function setupDailyChallenge() {
+    // Check if we already have a challenge for today
+    const today = new Date().toDateString();
+    const storedChallenge = localStorage.getItem('affirm_daily_challenge');
+    
+    if (storedChallenge) {
+        const challengeData = JSON.parse(storedChallenge);
+        
+        // If challenge is from today, use it
+        if (challengeData.date === today) {
+            dailyChallenge = challengeData.challenge;
+            challengeCompleted = challengeData.completed;
+            
+            // Create challenge UI if not completed
+            if (!challengeCompleted) {
+                createChallengeUI(dailyChallenge);
+            }
+            return;
+        }
+    }
+    
+    // Generate a new challenge for today
+    generateDailyChallenge(today);
+}
+
+/**
+ * Generate a daily challenge
+ * @param {string} date - Date string for the challenge
+ */
+function generateDailyChallenge(date) {
+    // Possible challenges
+    const challenges = [
+        { type: 'breathing', description: 'Complete a breathing exercise', points: 15 },
+        { type: 'journal', description: 'Write a journal entry', points: 20 },
+        { type: 'favorite', description: 'Save a favorite affirmation', points: 15 },
+        { type: 'emotions', description: 'Try a new emotion category', points: 10 },
+        { type: 'sessions', description: 'Complete 3 affirmation sessions', points: 25 }
+    ];
+    
+    // Select a random challenge
+    const randomIndex = Math.floor(Math.random() * challenges.length);
+    dailyChallenge = challenges[randomIndex];
+    challengeCompleted = false;
+    
+    // Save to localStorage
+    localStorage.setItem('affirm_daily_challenge', JSON.stringify({
+        date: date,
+        challenge: dailyChallenge,
+        completed: false
+    }));
+    
+    // Create challenge UI
+    createChallengeUI(dailyChallenge);
+}
+
+/**
+ * Create challenge UI
+ * @param {Object} challenge - Challenge object
+ */
+function createChallengeUI(challenge) {
+    // Create challenge container
+    const container = document.createElement('div');
+    container.className = 'challenge-container';
+    container.id = 'challenge-container';
+    
+    // Create title
+    const title = document.createElement('div');
+    title.className = 'challenge-title';
+    title.textContent = 'Daily Challenge';
+    
+    // Create description
+    const description = document.createElement('div');
+    description.className = 'challenge-description';
+    description.textContent = challenge.description;
+    
+    // Create reward
+    const reward = document.createElement('div');
+    reward.className = 'challenge-reward';
+    reward.textContent = `Reward: ${challenge.points} points`;
+    
+    // Append elements
+    container.appendChild(title);
+    container.appendChild(description);
+    container.appendChild(reward);
+    
+    // Append to container
+    document.querySelector('.container').appendChild(container);
+}
+
+/**
+ * Check if a challenge is completed
+ * @param {string} action - Action that was performed
+ */
+function checkChallengeCompletion(action) {
+    // If no challenge or already completed, return
+    if (!dailyChallenge || challengeCompleted) return;
+    
+    let completed = false;
+    
+    // Check if the action completes the challenge
+    switch (dailyChallenge.type) {
+        case 'breathing':
+            if (action === 'Completed breathing') completed = true;
+            break;
+        case 'journal':
+            if (action.includes('journal')) completed = true;
+            break;
+        case 'favorite':
+            if (action.includes('favorite')) completed = true;
+            break;
+        case 'emotions':
+            if (action.includes('emotion')) completed = true;
+            break;
+        case 'sessions':
+            // For session challenges, we need to keep count
+            let sessionCount = parseInt(localStorage.getItem('affirm_daily_sessions') || '0');
+            if (action === 'Completed affirmation') {
+                sessionCount++;
+                localStorage.setItem('affirm_daily_sessions', sessionCount.toString());
+                
+                if (sessionCount >= 3) completed = true;
+            }
+            break;
+    }
+    
+    // If challenge is completed, mark as complete and award points
+    if (completed) {
+        challengeCompleted = true;
+        
+        // Update localStorage
+        const challengeData = JSON.parse(localStorage.getItem('affirm_daily_challenge'));
+        challengeData.completed = true;
+        localStorage.setItem('affirm_daily_challenge', JSON.stringify(challengeData));
+        
+        // Update UI
+        updateChallengeUI();
+        
+        // Award points
+        awardPoints(dailyChallenge.points, 'Completed daily challenge');
+    }
+}
+
+/**
+ * Update challenge UI to show completion
+ */
+function updateChallengeUI() {
+    const container = document.getElementById('challenge-container');
+    if (!container) return;
+    
+    // Add completion indicator
+    const complete = document.createElement('div');
+    complete.className = 'challenge-complete';
+    complete.innerHTML = '✓';
+    
+    container.appendChild(complete);
+    
+    // Add pulsing animation
+    container.style.animation = 'counterPulse 1s';
+    
+    // Remove animation after it completes
+    setTimeout(() => {
+        container.style.animation = '';
+    }, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial setup
+    setupCanvas();
+    setupEventListeners();
+    setupParticleSystem();
+    
+    // Initialize preference system
+    initializePreferences();
+    
+    // Initialize streak system
+    initializeStreak();
+    
+    // Initialize gamification system
+    initializeGamification();
+    
+    // Start loading affirmations in the background
+    loadAffirmations();
+    
+    // Add theme based on current time of day if no preference
+    if (!getPreference('theme')) {
+        setThemeBasedOnTime();
+    }
+    
+    // Show/hide loading indicator
+    setTimeout(() => {
+        document.querySelector('.loading').classList.add('hidden');
+        
+        // Show first-time welcome if needed
+        const hasVisited = localStorage.getItem('affirm_visited');
+        if (!hasVisited) {
+            showWelcome();
+            localStorage.setItem('affirm_visited', 'true');
+        } else {
+            // Start with affirmation for returning users
+            getNextAffirmation();
+        }
+    }, 1500);
+}); 

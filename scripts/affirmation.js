@@ -26,6 +26,252 @@ class AffirmationManager {
         this.selectedEmotion = null;
         this.lastChoice = null;
         this.choiceHistory = [];
+        
+        // User preferences
+        this.userPreferences = {
+            themes: [],
+            favoriteAffirmations: [],
+            excludedTopics: [],
+            affirmationLength: 'medium' // 'short', 'medium', 'long'
+        };
+        
+        // Visual theme
+        this.currentTheme = null;
+        this.targetBackgroundColor = [0, 0, 0]; // Black default
+        this.currentBackgroundColor = [0, 0, 0];
+        
+        // Load saved preferences if available
+        this.loadUserPreferences();
+    }
+    
+    // User preferences methods
+    loadUserPreferences() {
+        try {
+            const savedPrefs = localStorage.getItem('affirm_preferences');
+            if (savedPrefs) {
+                this.userPreferences = JSON.parse(savedPrefs);
+                console.log('Loaded user preferences:', this.userPreferences);
+            }
+            
+            // Load saved favorites
+            const savedFavorites = localStorage.getItem('affirm_favorites');
+            if (savedFavorites) {
+                this.userPreferences.favoriteAffirmations = JSON.parse(savedFavorites);
+                console.log('Loaded favorites:', this.userPreferences.favoriteAffirmations.length, 'items');
+            }
+        } catch (error) {
+            console.error('Error loading preferences:', error);
+            // Reset to defaults if there was an error
+            this.userPreferences = {
+                themes: [],
+                favoriteAffirmations: [],
+                excludedTopics: [],
+                affirmationLength: 'medium'
+            };
+        }
+    }
+    
+    saveUserPreferences() {
+        try {
+            // Save only the main preferences, handle favorites separately
+            const prefsToSave = {
+                themes: this.userPreferences.themes,
+                excludedTopics: this.userPreferences.excludedTopics,
+                affirmationLength: this.userPreferences.affirmationLength
+            };
+            
+            localStorage.setItem('affirm_preferences', JSON.stringify(prefsToSave));
+            console.log('Saved user preferences');
+        } catch (error) {
+            console.error('Error saving preferences:', error);
+        }
+    }
+    
+    addUserPreferenceTheme(theme) {
+        if (!this.userPreferences.themes.includes(theme)) {
+            this.userPreferences.themes.push(theme);
+            this.saveUserPreferences();
+            return true;
+        }
+        return false;
+    }
+    
+    removeUserPreferenceTheme(theme) {
+        const index = this.userPreferences.themes.indexOf(theme);
+        if (index !== -1) {
+            this.userPreferences.themes.splice(index, 1);
+            this.saveUserPreferences();
+            return true;
+        }
+        return false;
+    }
+    
+    setAffirmationLength(length) {
+        if (['short', 'medium', 'long'].includes(length)) {
+            this.userPreferences.affirmationLength = length;
+            this.saveUserPreferences();
+            return true;
+        }
+        return false;
+    }
+    
+    addExcludedTopic(topic) {
+        if (!this.userPreferences.excludedTopics.includes(topic)) {
+            this.userPreferences.excludedTopics.push(topic);
+            this.saveUserPreferences();
+            return true;
+        }
+        return false;
+    }
+    
+    removeExcludedTopic(topic) {
+        const index = this.userPreferences.excludedTopics.indexOf(topic);
+        if (index !== -1) {
+            this.userPreferences.excludedTopics.splice(index, 1);
+            this.saveUserPreferences();
+            return true;
+        }
+        return false;
+    }
+    
+    // Favorites/Collection methods
+    addFavoriteAffirmation(affirmation) {
+        // Don't add duplicates
+        if (!this.userPreferences.favoriteAffirmations.some(fav => fav.text === affirmation)) {
+            const newFavorite = {
+                id: Date.now(), // Simple unique ID based on timestamp
+                text: affirmation,
+                date: new Date().toISOString(),
+                emotion: this.selectedEmotion || null
+            };
+            
+            this.userPreferences.favoriteAffirmations.push(newFavorite);
+            this.saveFavorites();
+            return true;
+        }
+        return false;
+    }
+    
+    removeFavoriteAffirmation(id) {
+        const initialLength = this.userPreferences.favoriteAffirmations.length;
+        this.userPreferences.favoriteAffirmations = this.userPreferences.favoriteAffirmations.filter(
+            fav => fav.id !== id
+        );
+        
+        if (initialLength !== this.userPreferences.favoriteAffirmations.length) {
+            this.saveFavorites();
+            return true;
+        }
+        return false;
+    }
+    
+    saveFavorites() {
+        try {
+            localStorage.setItem('affirm_favorites', JSON.stringify(this.userPreferences.favoriteAffirmations));
+            console.log('Saved favorites');
+        } catch (error) {
+            console.error('Error saving favorites:', error);
+        }
+    }
+    
+    getFavorites() {
+        return this.userPreferences.favoriteAffirmations;
+    }
+    
+    // Visual theme methods
+    setVisualThemeForEmotion(emotion) {
+        const themes = {
+            anxious: {
+                backgroundColor: [10, 10, 40], // Deep blue
+                particleColors: [[100, 150, 255], [70, 130, 230], [50, 100, 200]],
+                transitionSpeed: 1.2 // Slightly faster for anxious state
+            },
+            hopeful: {
+                backgroundColor: [40, 20, 60], // Purple tone
+                particleColors: [[255, 200, 100], [230, 180, 80], [200, 150, 50]],
+                transitionSpeed: 0.9
+            },
+            tired: {
+                backgroundColor: [40, 30, 20], // Warm dark brown
+                particleColors: [[150, 120, 100], [130, 100, 80], [100, 80, 60]],
+                transitionSpeed: 0.7 // Slower for tired state
+            },
+            sad: {
+                backgroundColor: [20, 30, 40], // Dark teal
+                particleColors: [[100, 130, 150], [80, 110, 130], [60, 90, 110]],
+                transitionSpeed: 0.8
+            },
+            calm: {
+                backgroundColor: [20, 40, 30], // Dark green
+                particleColors: [[100, 200, 150], [80, 180, 130], [60, 160, 110]],
+                transitionSpeed: 0.85
+            },
+            overwhelmed: {
+                backgroundColor: [40, 25, 25], // Dark burgundy
+                particleColors: [[200, 100, 100], [180, 80, 80], [160, 60, 60]],
+                transitionSpeed: 1.1
+            },
+            content: {
+                backgroundColor: [30, 35, 25], // Olive green
+                particleColors: [[180, 200, 120], [160, 180, 100], [140, 160, 80]],
+                transitionSpeed: 0.8
+            },
+            excited: {
+                backgroundColor: [45, 25, 35], // Magenta tone
+                particleColors: [[255, 130, 180], [235, 110, 160], [215, 90, 140]],
+                transitionSpeed: 1.3 // Faster for excited state
+            },
+            grateful: {
+                backgroundColor: [40, 35, 15], // Gold tone
+                particleColors: [[255, 215, 80], [235, 195, 60], [215, 175, 40]],
+                transitionSpeed: 0.9
+            },
+            neutral: {
+                backgroundColor: [25, 25, 30], // Neutral gray-blue
+                particleColors: [[150, 150, 170], [130, 130, 150], [110, 110, 130]],
+                transitionSpeed: 1.0
+            },
+            curious: {
+                backgroundColor: [20, 35, 45], // Turquoise tone
+                particleColors: [[80, 200, 230], [60, 180, 210], [40, 160, 190]],
+                transitionSpeed: 1.1
+            },
+            peaceful: {
+                backgroundColor: [25, 35, 40], // Slate blue
+                particleColors: [[120, 150, 200], [100, 130, 180], [80, 110, 160]],
+                transitionSpeed: 0.75 // Slower for peaceful state
+            }
+        };
+        
+        // Set the theme based on emotion, or default to calm
+        this.currentTheme = themes[emotion] || themes['calm'];
+        
+        // Apply background color transition
+        this.targetBackgroundColor = this.currentTheme.backgroundColor;
+        
+        // Update animation timing based on emotion state
+        if (this.currentTheme.transitionSpeed) {
+            // Adjust animation timings proportionally
+            const baseSpeed = 1.0;
+            const speedFactor = this.currentTheme.transitionSpeed / baseSpeed;
+            
+            this.fadeInDuration = Math.round(800 / speedFactor);
+            this.fadeOutDuration = Math.round(1500 / speedFactor);
+            this.staggerDelay = Math.round(100 / speedFactor);
+        }
+        
+        console.log('Set visual theme for emotion:', emotion);
+    }
+    
+    // Get a particle color from the current theme
+    getThemeParticleColor() {
+        if (!this.currentTheme || !this.currentTheme.particleColors) {
+            return [255, 255, 255]; // Default white
+        }
+        
+        // Select a random color from the theme's particle color palette
+        const colors = this.currentTheme.particleColors;
+        return colors[Math.floor(Math.random() * colors.length)];
     }
     
     // Load the initial affirmation from the API
@@ -570,10 +816,18 @@ class AffirmationManager {
     }
     
     // Emit particles from the cursor position
-    emitParticlesFromCursor(x, y, count = 5, color = [255, 255, 255]) {
+    emitParticlesFromCursor(x, y, count = 5, color = null) {
         // If there's no particle system yet, create one
         if (!this.particleSystem) {
             this.particleSystem = new ParticleSystem();
+        }
+        
+        // Use theme color if no color is provided and a theme is set
+        if (!color && this.currentTheme && this.currentTheme.particleColors) {
+            color = this.getThemeParticleColor();
+        } else if (!color) {
+            // Default white if no theme or color provided
+            color = [255, 255, 255];
         }
         
         // Emit cursor particles with the specified color

@@ -2,7 +2,7 @@
 let canvas;
 let affirmationManager;
 let interactiveUI;
-let currentState = 'emotion_selection'; // 'emotion_selection', 'initializing', 'displaying', 'transitioning', 'creating', 'choice_selection', 'pre_choice_transition'
+let currentState = 'emotion_selection'; // 'emotion_selection', 'initializing', 'displaying', 'transitioning', 'creating', 'choice_selection', 'pre_choice_transition', 'breathing_guidance'
 let displayDuration = 15000; // how long to display text before transition (ms) - increased to 15 seconds
 let displayStartTime = 0;
 let lastStateChange = 0; // Track when we last changed states
@@ -18,6 +18,18 @@ let lastApiRequestTime = 0; // Track when the last API request was made
 const MIN_API_INTERVAL = 15000; // Minimum time between API requests (15 seconds)
 let selectedEmotion = null; // Store the selected emotion
 let selectedChoice = null; // Store the selected choice
+
+// Breathing guidance variables
+let breathingCircle = null;
+let breathingPhase = 'inhale'; // 'inhale', 'hold', 'exhale'
+let breathingCycleCount = 0;
+let breathingStartTime = 0;
+let breathingDuration = {
+    inhale: 4000, // 4 seconds
+    hold: 2000,   // 2 seconds
+    exhale: 4000   // 4 seconds
+};
+let showBreathingGuidance = true; // Set to false to disable breathing guidance
 
 // API Configuration
 // To enable the API after deploying the Cloudflare Worker:
@@ -125,6 +137,9 @@ function loadInitialAffirmationWithEmotion(emotion) {
     // Update last API request time
     lastApiRequestTime = millis();
     
+    // Set the visual theme for the selected emotion
+    affirmationManager.setVisualThemeForEmotion(emotion);
+    
     // Load initial affirmation with emotion
     affirmationManager.loadInitialAffirmationWithEmotion(emotion).then(() => {
         // Initialize the first set of characters with fade-in animation
@@ -153,6 +168,9 @@ function requestNextAffirmationWithChoice(choice) {
         
         // Start fading out current characters
         affirmationManager.prepareForTransition();
+        
+        // Apply a subtle theme variation based on the choice
+        applyChoiceThemeVariation(choice);
     }).catch(error => {
         console.error("Error requesting next affirmation:", error);
         requestInProgress = false;
@@ -161,6 +179,46 @@ function requestNextAffirmationWithChoice(choice) {
         changeState('transitioning');
         affirmationManager.prepareForTransition();
     });
+}
+
+/**
+ * Apply a subtle theme variation based on the selected choice
+ * @param {string} choice - The selected choice
+ */
+function applyChoiceThemeVariation(choice) {
+    // Only apply if we have a current theme
+    if (!affirmationManager.currentTheme) return;
+    
+    // Get current background color
+    const currentBg = [...affirmationManager.targetBackgroundColor];
+    
+    // Apply subtle variations based on choice categories
+    const strengthChoices = ['strength', 'inner_strength', 'overcome_challenges', 'personal_growth'];
+    const peaceChoices = ['inner_peace', 'mindful_presence', 'calm'];
+    const gratitudeChoices = ['gratitude', 'appreciate_present', 'find_joy'];
+    const changeChoices = ['embrace_change', 'confidence'];
+    
+    // Create a subtle shift in the current color
+    if (strengthChoices.includes(choice)) {
+        // Strength: slightly more red/warm
+        currentBg[0] = Math.min(currentBg[0] + 10, 50);
+        currentBg[1] = Math.max(currentBg[1] - 5, 0);
+    } else if (peaceChoices.includes(choice)) {
+        // Peace: slightly more blue/cool
+        currentBg[2] = Math.min(currentBg[2] + 10, 50);
+        currentBg[0] = Math.max(currentBg[0] - 5, 0);
+    } else if (gratitudeChoices.includes(choice)) {
+        // Gratitude: slightly more gold/yellow
+        currentBg[0] = Math.min(currentBg[0] + 8, 50);
+        currentBg[1] = Math.min(currentBg[1] + 8, 50);
+    } else if (changeChoices.includes(choice)) {
+        // Change: slightly more purple
+        currentBg[0] = Math.min(currentBg[0] + 5, 50);
+        currentBg[2] = Math.min(currentBg[2] + 5, 50);
+    }
+    
+    // Apply the subtle variation
+    affirmationManager.targetBackgroundColor = currentBg;
 }
 
 // Helper function to change states with logging
@@ -207,12 +265,17 @@ function changeState(newState) {
         case 'pre_choice_transition':
             // No specific actions needed
             break;
+            
+        case 'breathing_guidance':
+            // No specific actions needed
+            break;
     }
 }
 
 // P5.js draw function - runs continuously
 function draw() {
-    background(0); // Black background
+    // Apply background color based on theme
+    updateBackgroundColor();
 
     // Handle different states
     switch (currentState) {
@@ -240,6 +303,12 @@ function draw() {
                     // Start fading out current characters but don't show choices yet
                     affirmationManager.prepareForTransition();
                     changeState('pre_choice_transition');
+                    return;
+                }
+                
+                // Check if we should show breathing guidance
+                if (showBreathingGuidance) {
+                    startBreathingGuidance();
                     return;
                 }
                 
@@ -333,6 +402,11 @@ function draw() {
         case 'choice_selection':
             // Just show choice selection UI, handled by InteractiveUI
             break;
+            
+        case 'breathing_guidance':
+            // Draw breathing guidance animation
+            drawBreathingGuidance();
+            break;
     }
     
     // Track mouse position for particle effects
@@ -392,6 +466,206 @@ function draw() {
     // Update last mouse position
     lastMouseX = mouseX;
     lastMouseY = mouseY;
+}
+
+/**
+ * Update background color based on theme
+ */
+function updateBackgroundColor() {
+    if (affirmationManager && affirmationManager.targetBackgroundColor) {
+        // Get current background color
+        let currentBg = affirmationManager.currentBackgroundColor || [0, 0, 0];
+        
+        // Smoothly transition to target color
+        currentBg[0] = lerp(currentBg[0], affirmationManager.targetBackgroundColor[0], 0.02);
+        currentBg[1] = lerp(currentBg[1], affirmationManager.targetBackgroundColor[1], 0.02);
+        currentBg[2] = lerp(currentBg[2], affirmationManager.targetBackgroundColor[2], 0.02);
+        
+        // Update current background
+        affirmationManager.currentBackgroundColor = currentBg;
+        
+        // Apply background
+        background(currentBg[0], currentBg[1], currentBg[2]);
+    } else {
+        // Default black background
+        background(0);
+    }
+}
+
+/**
+ * Start breathing guidance animation
+ */
+function startBreathingGuidance() {
+    if (debugMode) console.log("Starting breathing guidance");
+    
+    // Create breathing container if it doesn't exist
+    let breathingContainer = document.getElementById('breathing-container');
+    if (!breathingContainer) {
+        breathingContainer = document.createElement('div');
+        breathingContainer.className = 'breathing-container';
+        breathingContainer.id = 'breathing-container';
+        
+        // Create breathing circle
+        const circle = document.createElement('div');
+        circle.className = 'breathing-circle';
+        circle.id = 'breathing-circle';
+        
+        // Create breathing text
+        const text = document.createElement('div');
+        text.className = 'breathing-text';
+        text.id = 'breathing-text';
+        text.textContent = 'Inhale';
+        
+        // Create progress bar
+        const progress = document.createElement('div');
+        progress.className = 'breathing-progress';
+        
+        const progressInner = document.createElement('div');
+        progressInner.className = 'breathing-progress-inner';
+        progressInner.id = 'breathing-progress-inner';
+        progressInner.style.width = '0%';
+        
+        progress.appendChild(progressInner);
+        
+        // Append elements
+        breathingContainer.appendChild(circle);
+        breathingContainer.appendChild(text);
+        breathingContainer.appendChild(progress);
+        
+        // Append to container
+        document.querySelector('.container').appendChild(breathingContainer);
+    }
+    
+    // Initialize breathing variables
+    breathingPhase = 'inhale';
+    breathingCycleCount = 0;
+    breathingStartTime = millis();
+    
+    // Show breathing container
+    breathingContainer.classList.add('active');
+    
+    // Change state
+    changeState('breathing_guidance');
+}
+
+/**
+ * Draw breathing guidance animation
+ */
+function drawBreathingGuidance() {
+    const currentTime = millis();
+    const elapsedTime = currentTime - breathingStartTime;
+    
+    // Get elements
+    const circle = document.getElementById('breathing-circle');
+    const text = document.getElementById('breathing-text');
+    const progressInner = document.getElementById('breathing-progress-inner');
+    
+    // Calculate total cycle duration
+    const totalCycleDuration = breathingDuration.inhale + breathingDuration.hold + breathingDuration.exhale;
+    
+    // Calculate current cycle progress
+    const cycleProgress = (elapsedTime % totalCycleDuration) / totalCycleDuration;
+    
+    // Update progress bar
+    if (progressInner) {
+        progressInner.style.width = `${cycleProgress * 100}%`;
+    }
+    
+    // Determine current phase
+    const inhaleEnd = breathingDuration.inhale / totalCycleDuration;
+    const holdEnd = (breathingDuration.inhale + breathingDuration.hold) / totalCycleDuration;
+    
+    let newPhase;
+    if (cycleProgress < inhaleEnd) {
+        newPhase = 'inhale';
+    } else if (cycleProgress < holdEnd) {
+        newPhase = 'hold';
+    } else {
+        newPhase = 'exhale';
+    }
+    
+    // Check if phase changed
+    if (newPhase !== breathingPhase) {
+        breathingPhase = newPhase;
+        
+        // Update text
+        if (text) {
+            text.textContent = breathingPhase.charAt(0).toUpperCase() + breathingPhase.slice(1);
+        }
+        
+        // If we completed a cycle, increment counter
+        if (breathingPhase === 'inhale') {
+            breathingCycleCount++;
+            if (debugMode) console.log(`Completed breathing cycle ${breathingCycleCount}`);
+        }
+    }
+    
+    // Update circle size based on phase
+    if (circle) {
+        let size;
+        
+        if (breathingPhase === 'inhale') {
+            // Calculate progress within inhale phase
+            const phaseProgress = (elapsedTime % totalCycleDuration) / breathingDuration.inhale;
+            size = map(phaseProgress, 0, 1, 100, 200);
+        } else if (breathingPhase === 'hold') {
+            size = 200; // Maximum size during hold
+        } else { // exhale
+            // Calculate progress within exhale phase
+            const phaseElapsed = (elapsedTime % totalCycleDuration) - breathingDuration.inhale - breathingDuration.hold;
+            const phaseProgress = phaseElapsed / breathingDuration.exhale;
+            size = map(phaseProgress, 0, 1, 200, 100);
+        }
+        
+        circle.style.width = `${size}px`;
+        circle.style.height = `${size}px`;
+    }
+    
+    // Check if we've completed 3 cycles
+    if (breathingCycleCount >= 3) {
+        endBreathingGuidance();
+    }
+}
+
+/**
+ * End breathing guidance animation
+ */
+function endBreathingGuidance() {
+    if (debugMode) console.log("Ending breathing guidance");
+    
+    // Hide breathing container
+    const breathingContainer = document.getElementById('breathing-container');
+    if (breathingContainer) {
+        breathingContainer.classList.remove('active');
+    }
+    
+    // Enforce minimum time between API requests
+    const currentTime = millis();
+    if (currentTime - lastApiRequestTime < MIN_API_INTERVAL) {
+        // Not enough time has passed since the last API request
+        if (debugMode) console.log(`Waiting for minimum API interval (${Math.floor((MIN_API_INTERVAL - (currentTime - lastApiRequestTime)) / 1000)}s remaining)`);
+        
+        // Go back to displaying state and wait for next check
+        changeState('displaying');
+        return;
+    }
+    
+    // Set flag to prevent multiple requests
+    requestInProgress = true;
+    lastApiRequestTime = currentTime;
+    
+    if (debugMode) console.log("Requesting next affirmation after breathing (API call)");
+    
+    // Request the next affirmation and start transition
+    affirmationManager.requestNextAffirmation().then(() => {
+        // Start fading out current characters
+        affirmationManager.prepareForTransition();
+        changeState('transitioning');
+    }).catch(error => {
+        console.error("Error requesting next affirmation:", error);
+        requestInProgress = false; // Reset flag on error
+        changeState('displaying'); // Go back to displaying state
+    });
 }
 
 // Handle window resize

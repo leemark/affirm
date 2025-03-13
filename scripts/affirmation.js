@@ -1078,53 +1078,83 @@ class AffirmationManager {
     
     // API methods to fetch emotion-based and choice-based affirmations
     async fetchEmotionAffirmation(emotion) {
+        if (!this.API_ENABLED) {
+            return this.getHardcodedEmotionAffirmation(emotion);
+        }
+        
         try {
-            // Use the configured API URL
+            const data = this.addStoryContext({
+                emotion: emotion
+            });
+            
             const response = await fetch(`${this.API_URL}/api/emotion-affirmation`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ emotion })
+                body: JSON.stringify(data)
             });
             
             if (!response.ok) {
-                throw new Error('Failed to fetch emotion-based affirmation');
+                throw new Error(`API responded with status: ${response.status}`);
             }
             
-            const data = await response.json();
-            return data.affirmation;
+            const result = await response.json();
+            // Process the affirmation with narrative elements
+            if (result.affirmation) {
+                result.affirmation = this.processAffirmationWithNarrative(result.affirmation);
+            }
+            
+            return result;
         } catch (error) {
             console.error('Error fetching emotion-based affirmation:', error);
-            // Fallback to a hardcoded emotion-based affirmation
-            return this.getHardcodedEmotionAffirmation(emotion);
+            const fallback = this.getHardcodedEmotionAffirmation(emotion);
+            // Process the fallback with narrative elements
+            fallback.affirmation = this.processAffirmationWithNarrative(fallback.affirmation);
+            return fallback;
         }
     }
     
     async fetchChoiceAffirmation(currentAffirmation, choice) {
+        if (!this.API_ENABLED) {
+            return this.getHardcodedChoiceAffirmation(choice);
+        }
+        
         try {
-            // Use the configured API URL
+            // Update story attributes based on choice
+            this.updateStoryAttributes(choice);
+            
+            const data = this.addStoryContext({
+                currentAffirmation: currentAffirmation.affirmation,
+                choice: choice,
+                choiceHistory: this.choiceHistory || []
+            });
+            
             const response = await fetch(`${this.API_URL}/api/choice-affirmation`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    previousAffirmation: currentAffirmation,
-                    choice: choice
-                })
+                body: JSON.stringify(data)
             });
             
             if (!response.ok) {
-                throw new Error('Failed to fetch choice affirmation');
+                throw new Error(`API responded with status: ${response.status}`);
             }
             
-            const data = await response.json();
-            return data.affirmation;
+            const result = await response.json();
+            // Process the affirmation with narrative elements
+            if (result.affirmation) {
+                result.affirmation = this.processAffirmationWithNarrative(result.affirmation);
+            }
+            
+            return result;
         } catch (error) {
-            console.error('Error fetching choice affirmation:', error);
-            // Fallback to a static affirmation based on the choice
-            return this.getHardcodedChoiceAffirmation(choice);
+            console.error('Error fetching choice-based affirmation:', error);
+            const fallback = this.getHardcodedChoiceAffirmation(choice);
+            // Process the fallback with narrative elements
+            fallback.affirmation = this.processAffirmationWithNarrative(fallback.affirmation);
+            return fallback;
         }
     }
     
@@ -1184,5 +1214,396 @@ class AffirmationManager {
             this.choiceHistory = [];
         }
         this.choiceHistory.push(choice);
+    }
+    
+    /**
+     * Add story context to affirmation request
+     * @param {Object} data - The data object to send to the API
+     * @returns {Object} - Modified data object with story context
+     */
+    addStoryContext(data) {
+        // Add story world context if available
+        if (window.storyWorld) {
+            data.storyContext = {
+                chapter: storyWorld.currentChapter,
+                location: storyWorld.currentLocation,
+                guide: storyWorld.getCurrentGuide()?.id || 'sage',
+                attributes: { ...storyWorld.attributes }
+            };
+        }
+        return data;
+    }
+    
+    /**
+     * Process affirmation text to add narrative elements
+     * @param {string} text - Original affirmation text
+     * @returns {string} - Processed affirmation text with narrative elements
+     */
+    processAffirmationWithNarrative(text) {
+        if (!window.storyWorld) return text;
+        
+        // Get current guide and location for context
+        const guide = storyWorld.getCurrentGuide();
+        const location = storyWorld.locations.find(loc => loc.id === storyWorld.currentLocation);
+        
+        // Create a prefix based on the current guide (occasionally)
+        let prefix = '';
+        if (Math.random() < 0.3 && guide) {
+            const prefixOptions = {
+                'sage': ["The Sage whispers: ", "Ancient wisdom says: ", "From the depths of knowledge: "],
+                'healer': ["The Healer offers: ", "With compassionate insight: ", "The healing truth is: "],
+                'warrior': ["The Warrior declares: ", "With unwavering strength: ", "Stand tall and know: "],
+                'creator': ["The Creator reveals: ", "From the font of inspiration: ", "Creative insight unfolds: "]
+            };
+            
+            const guidePrefixes = prefixOptions[guide.id] || prefixOptions['sage'];
+            prefix = guidePrefixes[Math.floor(Math.random() * guidePrefixes.length)];
+        }
+        
+        // Create a suffix based on the current location (occasionally)
+        let suffix = '';
+        if (Math.random() < 0.25 && location) {
+            const suffixOptions = {
+                'beginning': [" This is where all journeys begin.", " Your path unfolds from here.", " The first step is always the most important."],
+                'forest': [" Let this truth grow within you.", " Like a seed in fertile ground, nurture this wisdom.", " The forest speaks in whispers of change."],
+                'mountain': [" From this height, see your life with clarity.", " The mountain's steadiness is within you.", " Rise above your challenges with this knowledge."],
+                'river': [" Let this flow through you.", " Like water, adapt and find your path.", " The river of wisdom never ceases."],
+                'cave': [" In darkness, this truth illuminates.", " Face your shadow with this understanding.", " Deep insights emerge from the cave of reflection."],
+                'meadow': [" Find peace in this simple truth.", " In stillness, wisdom blooms like wildflowers.", " The open meadow offers perspective."],
+                'lighthouse': [" Let this guide you through storms.", " A beacon for your continuing journey.", " The light of understanding shines brightest in darkness."]
+            };
+            
+            const locationSuffixes = suffixOptions[location.id] || suffixOptions['beginning'];
+            suffix = locationSuffixes[Math.floor(Math.random() * locationSuffixes.length)];
+        }
+        
+        // For very special moments (leveling up attributes, etc), add a collectible
+        if (Math.random() < 0.1) {
+            this.addCollectibleOpportunity(text);
+        }
+        
+        return prefix + text + suffix;
+    }
+    
+    /**
+     * Add a collectible opportunity based on the affirmation
+     * @param {string} affirmationText - The current affirmation text
+     */
+    addCollectibleOpportunity(affirmationText) {
+        if (!window.storyWorld) return;
+        
+        // Only proceed if we don't already have too many collectibles
+        const maxCollectiblesPerChapter = 3;
+        const currentChapterCollectibles = storyWorld.collectibles.filter(c => c.chapter === storyWorld.currentChapter);
+        if (currentChapterCollectibles.length >= maxCollectiblesPerChapter) return;
+        
+        // Map of collectible types and their detection keywords
+        const collectibleTypes = {
+            'crystal': ['clarity', 'vision', 'clear', 'bright', 'shine'],
+            'feather': ['light', 'gentle', 'freedom', 'fly', 'air'],
+            'scroll': ['wisdom', 'knowledge', 'learn', 'ancient', 'teaching'],
+            'key': ['unlock', 'open', 'access', 'door', 'path'],
+            'rune': ['power', 'magic', 'energy', 'symbol', 'mark'],
+            'flower': ['grow', 'bloom', 'beauty', 'nature', 'life'],
+            'star': ['guide', 'light', 'direction', 'night', 'shine'],
+            'leaf': ['change', 'season', 'nature', 'growth', 'fall'],
+            'shell': ['protect', 'ocean', 'depth', 'listen', 'spiral'],
+            'map': ['journey', 'direction', 'guide', 'path', 'way'],
+            'compass': ['direction', 'find', 'guide', 'way', 'journey'],
+            'token': ['memory', 'remind', 'symbol', 'mark', 'token'],
+            'lantern': ['light', 'dark', 'guide', 'see', 'illuminate']
+        };
+        
+        // Check affirmation for related keywords and create collectible opportunities
+        const lowerText = affirmationText.toLowerCase();
+        let matchedType = null;
+        let highestMatchScore = 0;
+        
+        for (const [type, keywords] of Object.entries(collectibleTypes)) {
+            const matchScore = keywords.reduce((score, keyword) => {
+                return score + (lowerText.includes(keyword) ? 1 : 0);
+            }, 0);
+            
+            if (matchScore > highestMatchScore) {
+                highestMatchScore = matchScore;
+                matchedType = type;
+            }
+        }
+        
+        // If we have a match, create a collectible
+        if (matchedType && highestMatchScore >= 1) {
+            // Generate a name for the collectible based on the type and affirmation
+            const collectibleNames = {
+                'crystal': ['Clarity Crystal', 'Vision Stone', 'Gem of Insight', 'Prism of Truth'],
+                'feather': ['Lightness Feather', 'Freedom Plume', 'Windborne Quill', 'Gentle Flight'],
+                'scroll': ['Wisdom Scroll', 'Ancient Text', 'Knowledge Parchment', 'Teaching Manuscript'],
+                'key': ['Path Key', 'Door Opener', 'Access Token', 'Gateway Emblem'],
+                'rune': ['Power Sigil', 'Energy Mark', 'Magic Symbol', 'Force Rune'],
+                'flower': ['Growth Bloom', 'Life Blossom', 'Beauty Petal', 'Nature Flower'],
+                'star': ['Guiding Star', 'Light Bearer', 'Direction Pointer', 'Night Beacon'],
+                'leaf': ['Change Leaf', 'Season Marker', 'Growth Foliage', 'Nature Token'],
+                'shell': ['Protection Spiral', 'Ocean Echo', 'Depth Conch', 'Listening Shell'],
+                'map': ['Journey Chart', 'Path Finder', 'Way Guide', 'Direction Map'],
+                'compass': ['True North', 'Path Finder', 'Direction Seeker', 'Journey Guide'],
+                'token': ['Memory Emblem', 'Reminder Token', 'Symbol Disc', 'Mark of Passage'],
+                'lantern': ['Dark Illuminator', 'Path Light', 'Guiding Flame', 'Seeing Beacon']
+            };
+            
+            const nameOptions = collectibleNames[matchedType] || ['Mysterious Object'];
+            const name = nameOptions[Math.floor(Math.random() * nameOptions.length)];
+            
+            // Create the collectible object
+            const collectible = {
+                id: `${matchedType}_${Date.now()}`,
+                type: matchedType,
+                name: name,
+                description: `Found during a moment of insight about ${matchedType}.`,
+                chapter: storyWorld.currentChapter,
+                location: storyWorld.currentLocation
+            };
+            
+            // Add attribute bonus based on collectible type
+            const attributeMap = {
+                'crystal': 'wisdom',
+                'feather': 'compassion',
+                'scroll': 'wisdom',
+                'key': 'courage',
+                'rune': 'resilience',
+                'flower': 'compassion',
+                'star': 'wisdom',
+                'leaf': 'resilience',
+                'shell': 'compassion',
+                'map': 'courage',
+                'compass': 'courage',
+                'token': 'resilience',
+                'lantern': 'wisdom'
+            };
+            
+            const attribute = attributeMap[matchedType] || 'wisdom';
+            
+            // Schedule display of collectible opportunity after affirmation is shown
+            setTimeout(() => {
+                this.showCollectibleOpportunity(collectible, attribute);
+            }, 8000); // Show after the affirmation has been displayed for a while
+        }
+    }
+    
+    /**
+     * Show collectible opportunity to the user
+     * @param {Object} collectible - Collectible object
+     * @param {string} attribute - Attribute to increase when collected
+     */
+    showCollectibleOpportunity(collectible, attribute) {
+        // Create collectible opportunity container
+        const container = document.createElement('div');
+        container.className = 'collectible-opportunity';
+        container.style.position = 'fixed';
+        container.style.bottom = '70px';
+        container.style.right = '20px';
+        container.style.padding = '15px';
+        container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        container.style.borderRadius = '10px';
+        container.style.color = 'white';
+        container.style.zIndex = '900';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'center';
+        container.style.gap = '10px';
+        container.style.boxShadow = '0 0 20px rgba(156, 184, 255, 0.5)';
+        container.style.opacity = '0';
+        container.style.transition = 'opacity 0.5s ease';
+        
+        // Create collectible icon
+        const icon = document.createElement('div');
+        icon.style.fontSize = '40px';
+        icon.style.marginBottom = '5px';
+        
+        const collectibleIcons = {
+            'crystal': '💎',
+            'feather': '🪶',
+            'scroll': '📜',
+            'key': '🔑',
+            'rune': '🔮',
+            'flower': '🌺',
+            'star': '⭐',
+            'leaf': '🍃',
+            'shell': '🐚',
+            'book': '📚',
+            'map': '🗺️',
+            'compass': '🧭',
+            'token': '🎭',
+            'lantern': '🏮'
+        };
+        
+        icon.textContent = collectibleIcons[collectible.type] || '❓';
+        
+        // Create name
+        const name = document.createElement('div');
+        name.style.fontSize = '1.2rem';
+        name.style.fontWeight = '500';
+        name.style.color = '#9cb8ff';
+        name.textContent = collectible.name;
+        
+        // Create description
+        const description = document.createElement('div');
+        description.style.fontSize = '0.9rem';
+        description.style.marginBottom = '10px';
+        description.style.textAlign = 'center';
+        description.textContent = `Collect to gain +1 ${capitalizeFirstLetter(attribute)}`;
+        
+        // Create collect button
+        const button = document.createElement('button');
+        button.style.padding = '8px 16px';
+        button.style.backgroundColor = 'rgba(156, 184, 255, 0.3)';
+        button.style.border = '1px solid rgba(156, 184, 255, 0.5)';
+        button.style.borderRadius = '20px';
+        button.style.color = 'white';
+        button.style.cursor = 'pointer';
+        button.style.transition = 'all 0.2s ease';
+        button.textContent = 'Collect';
+        
+        button.addEventListener('mouseover', () => {
+            button.style.backgroundColor = 'rgba(156, 184, 255, 0.5)';
+        });
+        
+        button.addEventListener('mouseout', () => {
+            button.style.backgroundColor = 'rgba(156, 184, 255, 0.3)';
+        });
+        
+        button.addEventListener('click', () => {
+            // Add collectible to the user's collection
+            if (window.storyWorld && storyWorld.addCollectible(collectible)) {
+                // Increase attribute
+                storyWorld.increaseAttribute(attribute, 1);
+                
+                // Award points if gamification is enabled
+                if (typeof awardPoints === 'function') {
+                    awardPoints(15, `Found ${collectible.name}`);
+                }
+                
+                // Show notification
+                if (typeof showStoryNotification === 'function') {
+                    showStoryNotification(`Collected ${collectible.name}! +1 ${capitalizeFirstLetter(attribute)}`);
+                }
+                
+                // Remove the opportunity
+                container.style.opacity = '0';
+                setTimeout(() => {
+                    container.remove();
+                }, 500);
+            }
+        });
+        
+        // Append elements
+        container.appendChild(icon);
+        container.appendChild(name);
+        container.appendChild(description);
+        container.appendChild(button);
+        
+        // Append to body
+        document.querySelector('.container').appendChild(container);
+        
+        // Show after a short delay
+        setTimeout(() => {
+            container.style.opacity = '1';
+        }, 100);
+        
+        // Auto-hide after some time if not collected
+        setTimeout(() => {
+            if (document.body.contains(container)) {
+                container.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(container)) {
+                        container.remove();
+                    }
+                }, 500);
+            }
+        }, 15000); // Hide after 15 seconds if not collected
+    }
+    
+    /**
+     * Update story attributes based on affirmation choices
+     * @param {string} choice - The user's choice
+     */
+    updateStoryAttributes(choice) {
+        if (!window.storyWorld) return;
+        
+        // Map of choices to attribute increases
+        const attributeMap = {
+            'strength': 'courage',
+            'growth': 'resilience',
+            'peace': 'compassion',
+            'truth': 'wisdom',
+            'compassion': 'compassion',
+            'courage': 'courage',
+            'balance': 'resilience',
+            'wisdom': 'wisdom',
+            'creativity': 'wisdom',
+            'perseverance': 'resilience'
+        };
+        
+        // If the choice maps to an attribute, increase it
+        if (attributeMap[choice]) {
+            const attribute = attributeMap[choice];
+            const newValue = storyWorld.increaseAttribute(attribute, 1);
+            
+            // Show notification about attribute increase
+            if (typeof showStoryNotification === 'function') {
+                showStoryNotification(`Your ${attribute} has increased to ${newValue}!`);
+            }
+            
+            // Check for chapter advancement based on attributes
+            this.checkForChapterAdvancement();
+        }
+    }
+    
+    /**
+     * Check if the user's attributes qualify them for chapter advancement
+     */
+    checkForChapterAdvancement() {
+        if (!window.storyWorld || typeof showStoryTransition !== 'function') return;
+        
+        // Calculate total attributes
+        const totalAttributes = Object.values(storyWorld.attributes).reduce((sum, value) => sum + value, 0);
+        
+        // Define thresholds for advancing to the next chapter based on total attributes
+        const chapterThresholds = [0, 5, 12, 20, 30, 40];
+        
+        // Check if we should advance to the next chapter
+        const targetChapter = storyWorld.currentChapter + 1;
+        if (targetChapter <= storyWorld.totalChapters && 
+            totalAttributes >= chapterThresholds[targetChapter - 1] && 
+            storyWorld.advanceChapter()) {
+            
+            // Get next chapter title
+            const nextChapterTitle = getChapterTitle(targetChapter);
+            
+            // Find a suitable next location for story progression
+            const nextLocations = {
+                1: 'beginning',  // Starting point
+                2: 'forest',     // Chapter 2 location
+                3: 'river',      // Chapter 3 location
+                4: 'mountain',   // Chapter 4 location
+                5: 'cave',       // Chapter 5 location
+                6: 'meadow',     // Chapter 6 location
+                7: 'lighthouse'  // Final chapter location
+            };
+            
+            const nextLocation = nextLocations[targetChapter] || storyWorld.currentLocation;
+            
+            // Show chapter transition
+            showStoryTransition(
+                `Chapter ${targetChapter}: ${nextChapterTitle}`, 
+                `Your inner journey continues as you grow in wisdom and strength.`,
+                6000
+            );
+            
+            // Change location after a delay to give time for the transition
+            setTimeout(() => {
+                if (typeof changeStoryLocation === 'function') {
+                    changeStoryLocation(nextLocation);
+                }
+            }, 2000);
+        }
     }
 } 

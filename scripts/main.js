@@ -125,6 +125,132 @@ let challengeCompleted = false;
 // 1. Uncomment the line below and replace with your worker URL
 const API_URL = 'https://affirm-api.leemark.workers.dev';
 
+// Story World Configuration
+const storyWorld = {
+    // The user's current chapter in their journey
+    currentChapter: 1,
+    
+    // Total number of chapters in the journey
+    totalChapters: 7,
+    
+    // The user's current location in the story world
+    currentLocation: 'beginning',
+    
+    // Available locations in the narrative
+    locations: [
+        {id: 'beginning', name: 'The Threshold', description: 'Where all journeys begin'},
+        {id: 'forest', name: 'Mindful Forest', description: 'A place of growth and self-discovery'},
+        {id: 'mountain', name: 'Peak of Perspective', description: 'See your life from new heights'},
+        {id: 'river', name: 'River of Reflection', description: 'Flow with your thoughts and emotions'},
+        {id: 'cave', name: 'Cave of Shadows', description: 'Face your inner challenges'},
+        {id: 'meadow', name: 'Meadow of Peace', description: 'Find harmony in simplicity'},
+        {id: 'lighthouse', name: 'Guiding Light', description: 'Illuminate your path forward'}
+    ],
+    
+    // Characters who guide the user on their journey
+    guides: [
+        {id: 'sage', name: 'The Sage', specialty: 'wisdom', avatar: '🧙'},
+        {id: 'healer', name: 'The Healer', specialty: 'emotional-balance', avatar: '🌿'},
+        {id: 'warrior', name: 'The Warrior', specialty: 'strength', avatar: '⚔️'},
+        {id: 'creator', name: 'The Creator', specialty: 'inspiration', avatar: '✨'}
+    ],
+    
+    // User's character growth attributes
+    attributes: {
+        wisdom: 0,
+        courage: 0,
+        compassion: 0,
+        resilience: 0
+    },
+    
+    // Story collectibles the user has found
+    collectibles: [],
+    
+    // Story milestones the user has reached
+    milestones: [],
+    
+    // Load story progress from localStorage
+    loadProgress() {
+        const savedProgress = localStorage.getItem('affirm_story_progress');
+        if (savedProgress) {
+            const progress = JSON.parse(savedProgress);
+            this.currentChapter = progress.currentChapter || 1;
+            this.currentLocation = progress.currentLocation || 'beginning';
+            this.attributes = progress.attributes || {wisdom: 0, courage: 0, compassion: 0, resilience: 0};
+            this.collectibles = progress.collectibles || [];
+            this.milestones = progress.milestones || [];
+        }
+    },
+    
+    // Save story progress to localStorage
+    saveProgress() {
+        const progress = {
+            currentChapter: this.currentChapter,
+            currentLocation: this.currentLocation,
+            attributes: this.attributes,
+            collectibles: this.collectibles,
+            milestones: this.milestones
+        };
+        localStorage.setItem('affirm_story_progress', JSON.stringify(progress));
+    },
+    
+    // Advance to the next chapter if requirements are met
+    advanceChapter() {
+        if (this.currentChapter < this.totalChapters) {
+            this.currentChapter++;
+            this.milestones.push({
+                type: 'chapter_complete',
+                chapter: this.currentChapter - 1,
+                date: new Date().toISOString()
+            });
+            this.saveProgress();
+            return true;
+        }
+        return false;
+    },
+    
+    // Change the current location
+    changeLocation(locationId) {
+        const location = this.locations.find(loc => loc.id === locationId);
+        if (location) {
+            this.currentLocation = locationId;
+            this.saveProgress();
+            return location;
+        }
+        return null;
+    },
+    
+    // Increase an attribute value
+    increaseAttribute(attribute, amount = 1) {
+        if (this.attributes.hasOwnProperty(attribute)) {
+            this.attributes[attribute] += amount;
+            this.saveProgress();
+            return this.attributes[attribute];
+        }
+        return null;
+    },
+    
+    // Add a collectible
+    addCollectible(collectible) {
+        if (!this.collectibles.some(c => c.id === collectible.id)) {
+            this.collectibles.push({
+                ...collectible,
+                dateFound: new Date().toISOString()
+            });
+            this.saveProgress();
+            return true;
+        }
+        return false;
+    },
+    
+    // Get current guide based on user's journey
+    getCurrentGuide() {
+        // This could be based on user's current location, emotional state, or chapter
+        const guideIndex = (this.currentChapter - 1) % this.guides.length;
+        return this.guides[guideIndex];
+    }
+};
+
 // P5.js setup function - runs once at the beginning
 function setup() {
     // Create canvas that fills the container
@@ -1411,6 +1537,655 @@ function updateChallengeUI() {
     }, 1000);
 }
 
+/**
+ * Initialize story UI components
+ */
+function initializeStoryJourney() {
+    if (debugMode) console.log("Initializing story journey");
+    
+    // Load story progress
+    storyWorld.loadProgress();
+    
+    // Create story status display
+    createStoryStatusDisplay();
+    
+    // Create story panel
+    createStoryPanel();
+    
+    // Set background theme based on current location
+    applyLocationTheme(storyWorld.currentLocation);
+}
+
+/**
+ * Create the story status display in the top corner
+ */
+function createStoryStatusDisplay() {
+    const statusContainer = document.createElement('div');
+    statusContainer.className = 'story-status';
+    statusContainer.id = 'story-status';
+    
+    // Create chapter display
+    const chapterDisplay = document.createElement('span');
+    chapterDisplay.className = 'story-chapter';
+    chapterDisplay.textContent = `Chapter ${storyWorld.currentChapter}`;
+    
+    // Create location display
+    const locationDisplay = document.createElement('span');
+    locationDisplay.className = 'location-name';
+    const currentLocation = storyWorld.locations.find(loc => loc.id === storyWorld.currentLocation);
+    locationDisplay.textContent = currentLocation ? currentLocation.name : 'Unknown';
+    
+    // Add location icon based on current location
+    const locationIcon = document.createElement('span');
+    locationIcon.className = 'location-icon';
+    locationIcon.textContent = getLocationIcon(storyWorld.currentLocation);
+    
+    // Append elements
+    statusContainer.appendChild(chapterDisplay);
+    statusContainer.appendChild(document.createTextNode(' • '));
+    statusContainer.appendChild(locationDisplay);
+    statusContainer.appendChild(locationIcon);
+    
+    // Add click handler to open story panel
+    statusContainer.addEventListener('click', () => {
+        showStoryPanel();
+    });
+    
+    // Append to container
+    document.querySelector('.container').appendChild(statusContainer);
+}
+
+/**
+ * Create the full story panel
+ */
+function createStoryPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'story-panel';
+    panel.id = 'story-panel';
+    
+    // Create header
+    const header = document.createElement('h2');
+    header.textContent = 'Your Journey';
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'close-preferences';
+    closeButton.innerHTML = '×';
+    closeButton.addEventListener('click', () => {
+        hideStoryPanel();
+    });
+    
+    // Create journey map section
+    const journeyMapSection = createJourneyMapSection();
+    
+    // Create current guide section
+    const guideSection = createGuideSection();
+    
+    // Create character attributes section
+    const attributesSection = createAttributesSection();
+    
+    // Create collectibles section
+    const collectiblesSection = createCollectiblesSection();
+    
+    // Append all sections
+    panel.appendChild(header);
+    panel.appendChild(closeButton);
+    panel.appendChild(journeyMapSection);
+    panel.appendChild(guideSection);
+    panel.appendChild(attributesSection);
+    panel.appendChild(collectiblesSection);
+    
+    // Append to container
+    document.querySelector('.container').appendChild(panel);
+}
+
+/**
+ * Create the journey map section
+ */
+function createJourneyMapSection() {
+    const section = document.createElement('div');
+    section.className = 'story-journey-map';
+    
+    // Create journey progress bar
+    const journeyProgress = document.createElement('div');
+    journeyProgress.className = 'journey-progress';
+    
+    // Add progress fill
+    const progressFill = document.createElement('div');
+    progressFill.className = 'journey-progress-fill';
+    const progressPercentage = ((storyWorld.currentChapter - 1) / (storyWorld.totalChapters - 1)) * 100;
+    progressFill.style.width = `${progressPercentage}%`;
+    journeyProgress.appendChild(progressFill);
+    
+    // Add journey nodes
+    for (let i = 1; i <= storyWorld.totalChapters; i++) {
+        const node = document.createElement('div');
+        node.className = 'journey-node';
+        
+        if (i < storyWorld.currentChapter) {
+            node.classList.add('completed');
+            node.textContent = '✓';
+        } else if (i === storyWorld.currentChapter) {
+            node.classList.add('active');
+        }
+        
+        // Add tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'node-tooltip';
+        tooltip.textContent = getChapterTitle(i);
+        node.appendChild(tooltip);
+        
+        journeyProgress.appendChild(node);
+    }
+    
+    section.appendChild(journeyProgress);
+    return section;
+}
+
+/**
+ * Create the guide section
+ */
+function createGuideSection() {
+    const section = document.createElement('div');
+    section.className = 'guide-section';
+    
+    const currentGuide = storyWorld.getCurrentGuide();
+    
+    // Create guide avatar
+    const avatar = document.createElement('div');
+    avatar.className = 'guide-avatar';
+    avatar.textContent = currentGuide.avatar;
+    
+    // Create guide info
+    const info = document.createElement('div');
+    info.className = 'guide-info';
+    
+    // Create guide name
+    const name = document.createElement('div');
+    name.className = 'guide-name';
+    name.textContent = currentGuide.name;
+    
+    // Create guide message
+    const message = document.createElement('div');
+    message.className = 'guide-message';
+    message.textContent = getGuideMessage(currentGuide, storyWorld.currentChapter);
+    
+    // Append elements
+    info.appendChild(name);
+    info.appendChild(message);
+    
+    section.appendChild(avatar);
+    section.appendChild(info);
+    
+    return section;
+}
+
+/**
+ * Create the character attributes section
+ */
+function createAttributesSection() {
+    const section = document.createElement('div');
+    section.className = 'character-attributes';
+    
+    // Add each attribute
+    for (const [attribute, value] of Object.entries(storyWorld.attributes)) {
+        const attributeItem = document.createElement('div');
+        attributeItem.className = 'attribute-item';
+        
+        // Create attribute name
+        const attributeName = document.createElement('div');
+        attributeName.className = 'attribute-name';
+        attributeName.textContent = capitalizeFirstLetter(attribute);
+        
+        // Create progress bar
+        const progressBar = document.createElement('div');
+        progressBar.className = 'attribute-progress';
+        
+        const progressFill = document.createElement('div');
+        progressFill.className = 'attribute-progress-fill';
+        const maxAttributeValue = 10;
+        const percentage = Math.min((value / maxAttributeValue) * 100, 100);
+        progressFill.style.width = `${percentage}%`;
+        
+        progressBar.appendChild(progressFill);
+        
+        // Create value display
+        const valueDisplay = document.createElement('div');
+        valueDisplay.className = 'attribute-value';
+        valueDisplay.textContent = `${value}/${maxAttributeValue}`;
+        
+        // Append elements
+        attributeItem.appendChild(attributeName);
+        attributeItem.appendChild(progressBar);
+        attributeItem.appendChild(valueDisplay);
+        
+        section.appendChild(attributeItem);
+    }
+    
+    return section;
+}
+
+/**
+ * Create the collectibles section
+ */
+function createCollectiblesSection() {
+    const sectionWrapper = document.createElement('div');
+    sectionWrapper.className = 'collectibles-section';
+    
+    // Add title
+    const title = document.createElement('h3');
+    title.textContent = 'Collectibles';
+    title.style.marginBottom = '15px';
+    title.style.fontSize = '1.2rem';
+    title.style.color = '#9cb8ff';
+    
+    // Create grid
+    const grid = document.createElement('div');
+    grid.className = 'collectibles-grid';
+    
+    // Add collectible slots (some filled, some locked)
+    const totalCollectiblesPerChapter = 3;
+    const totalSlots = storyWorld.totalChapters * totalCollectiblesPerChapter;
+    
+    // Map of collectible icons
+    const collectibleIcons = {
+        'crystal': '💎',
+        'feather': '🪶',
+        'scroll': '📜',
+        'key': '🔑',
+        'rune': '🔮',
+        'flower': '🌺',
+        'star': '⭐',
+        'leaf': '🍃',
+        'shell': '🐚',
+        'book': '📚',
+        'map': '🗺️',
+        'quill': '✒️',
+        'coin': '🪙',
+        'gem': '💠',
+        'artifact': '🏺',
+        'token': '🎭',
+        'lantern': '🏮',
+        'compass': '🧭',
+        'hourglass': '⌛',
+        'chalice': '🏆',
+        'shard': '🔷'
+    };
+    
+    const collectibleNames = Object.keys(collectibleIcons);
+    
+    for (let i = 0; i < totalSlots; i++) {
+        const collectibleItem = document.createElement('div');
+        collectibleItem.className = 'collectible-item';
+        
+        // Check if this collectible is unlocked
+        const isUnlocked = storyWorld.collectibles.length > i;
+        
+        if (!isUnlocked) {
+            collectibleItem.classList.add('locked');
+        }
+        
+        // Create icon
+        const icon = document.createElement('div');
+        icon.className = 'collectible-icon';
+        
+        // Create name
+        const name = document.createElement('div');
+        name.className = 'collectible-name';
+        
+        if (isUnlocked) {
+            const collectible = storyWorld.collectibles[i];
+            icon.textContent = collectibleIcons[collectible.type] || '❓';
+            name.textContent = collectible.name;
+        } else {
+            icon.textContent = '❓';
+            name.textContent = 'Unknown';
+        }
+        
+        // Append elements
+        collectibleItem.appendChild(icon);
+        collectibleItem.appendChild(name);
+        
+        grid.appendChild(collectibleItem);
+    }
+    
+    sectionWrapper.appendChild(title);
+    sectionWrapper.appendChild(grid);
+    
+    return sectionWrapper;
+}
+
+/**
+ * Show the story panel
+ */
+function showStoryPanel() {
+    const panel = document.getElementById('story-panel');
+    if (panel) {
+        // Update panel content first
+        updateStoryPanel();
+        
+        // Then show it
+        panel.classList.add('active');
+    }
+}
+
+/**
+ * Update the story panel content
+ */
+function updateStoryPanel() {
+    // Update the journey progress
+    const progressFill = document.querySelector('.journey-progress-fill');
+    if (progressFill) {
+        const progressPercentage = ((storyWorld.currentChapter - 1) / (storyWorld.totalChapters - 1)) * 100;
+        progressFill.style.width = `${progressPercentage}%`;
+    }
+    
+    // Update guide message
+    const guideMessage = document.querySelector('.guide-message');
+    const currentGuide = storyWorld.getCurrentGuide();
+    if (guideMessage && currentGuide) {
+        guideMessage.textContent = getGuideMessage(currentGuide, storyWorld.currentChapter);
+    }
+    
+    // Update attributes
+    for (const [attribute, value] of Object.entries(storyWorld.attributes)) {
+        const attributeItem = document.querySelector(`.attribute-item:has(.attribute-name:contains('${capitalizeFirstLetter(attribute)}')`);
+        if (attributeItem) {
+            const progressFill = attributeItem.querySelector('.attribute-progress-fill');
+            const valueDisplay = attributeItem.querySelector('.attribute-value');
+            
+            if (progressFill) {
+                const maxAttributeValue = 10;
+                const percentage = Math.min((value / maxAttributeValue) * 100, 100);
+                progressFill.style.width = `${percentage}%`;
+            }
+            
+            if (valueDisplay) {
+                valueDisplay.textContent = `${value}/10`;
+            }
+        }
+    }
+}
+
+/**
+ * Hide the story panel
+ */
+function hideStoryPanel() {
+    const panel = document.getElementById('story-panel');
+    if (panel) {
+        panel.classList.remove('active');
+    }
+}
+
+/**
+ * Show a story transition screen
+ * @param {string} title - The transition title
+ * @param {string} description - The transition description
+ * @param {number} duration - Duration in ms before automatically hiding
+ */
+function showStoryTransition(title, description, duration = 5000) {
+    // Create transition screen if it doesn't exist
+    let transitionScreen = document.querySelector('.story-transitions');
+    if (!transitionScreen) {
+        transitionScreen = document.createElement('div');
+        transitionScreen.className = 'story-transitions';
+        
+        const titleElement = document.createElement('div');
+        titleElement.className = 'transition-title';
+        
+        const descriptionElement = document.createElement('div');
+        descriptionElement.className = 'transition-description';
+        
+        transitionScreen.appendChild(titleElement);
+        transitionScreen.appendChild(descriptionElement);
+        
+        document.querySelector('.container').appendChild(transitionScreen);
+    }
+    
+    // Update content
+    const titleElement = transitionScreen.querySelector('.transition-title');
+    const descriptionElement = transitionScreen.querySelector('.transition-description');
+    
+    if (titleElement) titleElement.textContent = title;
+    if (descriptionElement) descriptionElement.textContent = description;
+    
+    // Show transition
+    transitionScreen.classList.add('active');
+    
+    // Hide after duration
+    setTimeout(() => {
+        transitionScreen.classList.remove('active');
+    }, duration);
+}
+
+/**
+ * Show a notification about story progress
+ * @param {string} message - The notification message
+ * @param {number} duration - Duration in ms before automatically hiding
+ */
+function showStoryNotification(message, duration = 3000) {
+    // Create notification if it doesn't exist
+    let notification = document.querySelector('.story-notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.className = 'story-notification';
+        document.querySelector('.container').appendChild(notification);
+    }
+    
+    // Update content
+    notification.textContent = message;
+    
+    // Show notification
+    notification.classList.add('active');
+    
+    // Hide after duration
+    setTimeout(() => {
+        notification.classList.remove('active');
+    }, duration);
+}
+
+/**
+ * Change to a new location in the story
+ * @param {string} locationId - ID of the location to change to
+ */
+function changeStoryLocation(locationId) {
+    const location = storyWorld.changeLocation(locationId);
+    if (location) {
+        // Show transition
+        showStoryTransition(
+            `Arriving at ${location.name}`,
+            location.description,
+            4000
+        );
+        
+        // Update location theme
+        applyLocationTheme(locationId);
+        
+        // Update story status display
+        updateStoryStatusDisplay();
+        
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Apply visual theme based on location
+ * @param {string} locationId - ID of the location
+ */
+function applyLocationTheme(locationId) {
+    // Each location has its own color palette
+    const locationThemes = {
+        'beginning': {
+            backgroundColor: [10, 12, 20],
+            particleColor: [100, 140, 255]
+        },
+        'forest': {
+            backgroundColor: [10, 30, 15],
+            particleColor: [60, 200, 100]
+        },
+        'mountain': {
+            backgroundColor: [30, 30, 50],
+            particleColor: [180, 200, 255]
+        },
+        'river': {
+            backgroundColor: [10, 20, 50],
+            particleColor: [50, 150, 255]
+        },
+        'cave': {
+            backgroundColor: [20, 10, 30],
+            particleColor: [150, 50, 200]
+        },
+        'meadow': {
+            backgroundColor: [30, 40, 15],
+            particleColor: [220, 240, 150]
+        },
+        'lighthouse': {
+            backgroundColor: [40, 40, 60],
+            particleColor: [255, 200, 100]
+        }
+    };
+    
+    const theme = locationThemes[locationId] || locationThemes['beginning'];
+    
+    // Update background color
+    backgroundColor.target = theme.backgroundColor;
+    
+    // Update affirmation manager theme if available
+    if (window.affirmationManager) {
+        // This will eventually need to be updated to work with the location themes
+        affirmationManager.setVisualThemeForEmotion('neutral');
+    }
+}
+
+/**
+ * Update the story status display
+ */
+function updateStoryStatusDisplay() {
+    const statusContainer = document.getElementById('story-status');
+    if (!statusContainer) return;
+    
+    // Update chapter
+    const chapterDisplay = statusContainer.querySelector('.story-chapter');
+    if (chapterDisplay) {
+        chapterDisplay.textContent = `Chapter ${storyWorld.currentChapter}`;
+    }
+    
+    // Update location
+    const locationDisplay = statusContainer.querySelector('.location-name');
+    const locationIcon = statusContainer.querySelector('.location-icon');
+    
+    if (locationDisplay) {
+        const currentLocation = storyWorld.locations.find(loc => loc.id === storyWorld.currentLocation);
+        locationDisplay.textContent = currentLocation ? currentLocation.name : 'Unknown';
+    }
+    
+    if (locationIcon) {
+        locationIcon.textContent = getLocationIcon(storyWorld.currentLocation);
+    }
+}
+
+/**
+ * Get a message from the current guide
+ * @param {Object} guide - The guide object
+ * @param {number} chapter - Current chapter number
+ * @returns {string} - Guide message
+ */
+function getGuideMessage(guide, chapter) {
+    const messages = {
+        'sage': [
+            "Welcome to your journey of wisdom. I will guide you through the landscapes of the mind.",
+            "The path unfolds before you. Each choice shapes your inner landscape.",
+            "You've come far in understanding. The middle of the journey often tests us most.",
+            "The greatest wisdom lies in knowing we know very little. Keep exploring.",
+            "Few reach these depths of insight. Your journey nears its pinnacle.",
+            "The light of wisdom now shines within you. You've become the knowledge you sought.",
+            "The circle completes. You now understand that wisdom is an endless journey."
+        ],
+        'healer': [
+            "I sense your emotional currents beginning to flow. Let me help you navigate them.",
+            "Feelings are like water - they must flow freely to remain clear and life-giving.",
+            "You're learning to balance the waters of emotion. Neither too rigid nor overflowing.",
+            "The healing journey requires facing both light and shadow. You're doing well.",
+            "Your emotional awareness has deepened remarkably. You're becoming a healer yourself.",
+            "The heart's wisdom now flows naturally through you. You've found your balance.",
+            "Your emotional journey has transformed you. Now you can help others find their way."
+        ],
+        'warrior': [
+            "Your journey of strength begins. I'll help you find the warrior within.",
+            "True strength comes from knowing when to stand firm and when to yield.",
+            "You're developing resilience with each challenge. The warrior grows stronger.",
+            "Courage isn't absence of fear, but moving forward despite it. You show this well.",
+            "Your inner strength has become remarkable. Few challenges can shake you now.",
+            "The warrior's spirit shines bright in you. Your resolve inspires others.",
+            "You've mastered the path of inner strength. The greatest battles are won within."
+        ],
+        'creator': [
+            "The spark of creativity begins in you. I'll help you fan it into flame.",
+            "You're learning to see possibilities where others see only what is. Good.",
+            "Your creative vision expands. You're beginning to transform yourself and your world.",
+            "Creating requires both inspiration and discipline. You're balancing both well.",
+            "Your creative power has grown immensely. You're bringing new beauty into being.",
+            "You've become a channel for inspiration. The flow moves through you effortlessly.",
+            "The master creator knows all creation is transformation. You've become that master."
+        ]
+    };
+    
+    // Get the appropriate message based on chapter
+    const guideMessages = messages[guide.id] || messages['sage'];
+    const messageIndex = Math.min(chapter - 1, guideMessages.length - 1);
+    
+    return guideMessages[messageIndex];
+}
+
+/**
+ * Get the title for a specific chapter
+ * @param {number} chapter - Chapter number
+ * @returns {string} - Chapter title
+ */
+function getChapterTitle(chapter) {
+    const chapterTitles = [
+        "The Beginning",
+        "First Steps",
+        "Growing Awareness",
+        "Facing Challenges",
+        "Finding Balance",
+        "Inner Mastery",
+        "Transformation"
+    ];
+    
+    return chapterTitles[chapter - 1] || `Chapter ${chapter}`;
+}
+
+/**
+ * Get the icon for a specific location
+ * @param {string} locationId - Location ID
+ * @returns {string} - Location icon
+ */
+function getLocationIcon(locationId) {
+    const locationIcons = {
+        'beginning': '🌅',
+        'forest': '🌲',
+        'mountain': '⛰️',
+        'river': '🌊',
+        'cave': '🕳️',
+        'meadow': '🌾',
+        'lighthouse': '🏮'
+    };
+    
+    return locationIcons[locationId] || '🌍';
+}
+
+/**
+ * Capitalize the first letter of a string
+ * @param {string} string - String to capitalize
+ * @returns {string} - Capitalized string
+ */
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// Update document load event listener to initialize story journey
 document.addEventListener('DOMContentLoaded', () => {
     // Initial setup
     setupCanvas();
@@ -1425,6 +2200,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize gamification system
     initializeGamification();
+    
+    // Initialize story journey system
+    initializeStoryJourney();
     
     // Start loading affirmations in the background
     loadAffirmations();

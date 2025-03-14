@@ -258,6 +258,9 @@ function setup() {
     canvas = createCanvas(container.offsetWidth, container.offsetHeight);
     canvas.parent('canvas-container');
 
+    // Initialize particle system - moved from setupParticleSystem()
+    particleSystem = new ParticleSystem();
+
     // Initialize affirmation manager
     affirmationManager = new AffirmationManager();
     
@@ -2186,16 +2189,8 @@ function capitalizeFirstLetter(string) {
 }
 
 /**
- * Set up the canvas in the container element
- */
-function setupCanvas() {
-    const container = document.getElementById('canvas-container');
-    canvas = createCanvas(container.offsetWidth, container.offsetHeight);
-    canvas.parent('canvas-container');
-}
-
-/**
  * Set up event listeners for the application
+ * This function doesn't use any p5.js functions so it's safe to call from DOMContentLoaded
  */
 function setupEventListeners() {
     // Global event listeners
@@ -2214,20 +2209,10 @@ function setupEventListeners() {
     });
 }
 
-/**
- * Initialize the particle system
- */
-function setupParticleSystem() {
-    // Initialize the particle system
-    particleSystem = new ParticleSystem();
-}
-
 // Update document load event listener to initialize story journey
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial setup
-    setupCanvas();
+    // Only set up event listeners here - p5.js specific initialization will happen in setup()
     setupEventListeners();
-    setupParticleSystem();
     
     // Initialize preference system
     initializePreferences();

@@ -2185,6 +2185,43 @@ function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+/**
+ * Set up the canvas in the container element
+ */
+function setupCanvas() {
+    const container = document.getElementById('canvas-container');
+    canvas = createCanvas(container.offsetWidth, container.offsetHeight);
+    canvas.parent('canvas-container');
+}
+
+/**
+ * Set up event listeners for the application
+ */
+function setupEventListeners() {
+    // Global event listeners
+    window.addEventListener('resize', windowResized);
+    
+    // Add any other app-specific event listeners here
+    document.addEventListener('keydown', (event) => {
+        // Handle keyboard shortcuts
+        if (event.key === 'Escape') {
+            // Close any open panels
+            interactiveUI.hideUI();
+            interactiveUI.hidePreferencesPanel();
+            interactiveUI.hideFavoritesPanel();
+            interactiveUI.hideJournalEntries();
+        }
+    });
+}
+
+/**
+ * Initialize the particle system
+ */
+function setupParticleSystem() {
+    // Initialize the particle system
+    particleSystem = new ParticleSystem();
+}
+
 // Update document load event listener to initialize story journey
 document.addEventListener('DOMContentLoaded', () => {
     // Initial setup
